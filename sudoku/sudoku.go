@@ -102,7 +102,7 @@ type Stats struct {
 	GuessMisses        int
 }
 
-func NewSudoku(size int) Sudoku {
+func NewSudoku() Sudoku {
 	//switch size {
 	//case 6:
 	//	return newSudoku[grid6, area6]()
