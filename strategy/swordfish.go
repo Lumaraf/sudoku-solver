@@ -1,4 +1,4 @@
-package solver
+package strategy
 
 import (
 	"github.com/lumaraf/sudoku-solver/restriction"
@@ -14,7 +14,7 @@ func (slv SwordfishSolver) Name() string {
 	return "SwordfishSolver"
 }
 
-func (slv SwordfishSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv SwordfishSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	rows := make([]int, 0, len(slv.rows))
 	for _, row := range slv.rows {
 		if !sudoku.RowArea(row).And(s.SolvedArea().Not()).Empty() {
@@ -38,7 +38,7 @@ func (slv SwordfishSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 	for digit := 1; digit <= 9; digit++ {
 		slv.findSwordfish(s, digit)
 	}
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
 func (slv SwordfishSolver) findSwordfish(s sudoku.Sudoku, digit int) bool {
@@ -147,7 +147,7 @@ func (slv SwordfishSolver) AreaFilter() sudoku.Area {
 	return sudoku.Area{}.Not()
 }
 
-func SwordfishSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
+func SwordfishSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
 	areas := make(map[sudoku.Area]bool, 18)
 	for _, r := range restrictions {
 		if unique, ok := r.(restriction.UniqueRestriction); ok {
@@ -165,7 +165,7 @@ func SwordfishSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
 		}
 	}
 	if len(rows) > 2 || len(cols) > 2 {
-		return []sudoku.Solver{SwordfishSolver{
+		return []sudoku.Strategy{SwordfishSolver{
 			rows: rows,
 			cols: cols,
 		}}

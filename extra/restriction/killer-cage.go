@@ -2,6 +2,7 @@ package restriction
 
 import (
 	"errors"
+	restriction2 "github.com/lumaraf/sudoku-solver/restriction"
 
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
@@ -36,10 +37,7 @@ func AddKillerCageRestriction(s sudoku.Sudoku, area sudoku.Area, sum int) {
 	for _, cell := range area.Locations {
 		cells = append(cells, cell)
 	}
-	s.AddRestriction(UniqueRestriction{
-		name: "cage",
-		area: sudoku.NewArea(cells...),
-	})
+	s.AddRestriction(restriction2.NewUniqueRestriction("cage", cells...))
 
 	s.AddRestriction(KillerCageRestriction{
 		Area: area,

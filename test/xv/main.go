@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	restriction2 "github.com/lumaraf/sudoku-solver/extra/restriction"
 	"github.com/lumaraf/sudoku-solver/restriction"
-	_ "github.com/lumaraf/sudoku-solver/solver"
+	_ "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -50,8 +51,8 @@ func main() {
 	s := sudoku.NewSudoku()
 	s.SetChainLimit(3)
 	restriction.AddClassicRestrictions(s)
-	restriction.AddNonConsecutiveRestriction(s)
-	s.AddRestriction(restriction.AntiRelationRestriction{
+	restriction2.AddNonConsecutiveRestriction(s)
+	s.AddRestriction(restriction2.AntiRelationRestriction{
 		Offsets: sudoku.Offsets{
 			{Row: 0, Col: -1},
 			{Row: -1, Col: 0},
@@ -138,9 +139,9 @@ func main() {
 
 func AddXVRestrictions(s sudoku.Sudoku, x [][2]sudoku.CellLocation, v [][2]sudoku.CellLocation) {
 	for _, cells := range x {
-		restriction.AddKillerCageRestriction(s, sudoku.NewArea(cells[0], cells[1]), 10)
+		restriction2.AddKillerCageRestriction(s, sudoku.NewArea(cells[0], cells[1]), 10)
 	}
 	for _, cells := range v {
-		restriction.AddKillerCageRestriction(s, sudoku.NewArea(cells[0], cells[1]), 5)
+		restriction2.AddKillerCageRestriction(s, sudoku.NewArea(cells[0], cells[1]), 5)
 	}
 }

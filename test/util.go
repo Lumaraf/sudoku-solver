@@ -3,34 +3,35 @@ package test
 import (
 	"context"
 	"fmt"
+	restriction2 "github.com/lumaraf/sudoku-solver/extra/restriction"
 	"github.com/lumaraf/sudoku-solver/restriction"
-	_ "github.com/lumaraf/sudoku-solver/solver"
+	_ "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-type sudokuSpec struct {
-	rows           []string
-	cages          []string
-	cageSums       map[rune]int
-	sandwichRows   []int
-	sandwichCols   []int
-	thermometers   [][]sudoku.CellLocation
-	palindromes    [][]sudoku.CellLocation
-	anitKing       bool
-	anitKnight     bool
-	nonConsecutive bool
-	diagonals      bool
-	colors         bool
-	rule159        bool
+type SudokuSpec struct {
+	Rows           []string
+	Cages          []string
+	CageSums       map[rune]int
+	SandwichRows   []int
+	SandwichCols   []int
+	Thermometers   [][]sudoku.CellLocation
+	Palindromes    [][]sudoku.CellLocation
+	AntiKing       bool
+	AntiKnight     bool
+	NonConsecutive bool
+	Diagonals      bool
+	Colors         bool
+	Rule159        bool
 }
 
-func (spec sudokuSpec) setup(s sudoku.Sudoku) {
-	if spec.cageSums != nil {
+func (spec SudokuSpec) setup(s sudoku.Sudoku) {
+	if spec.CageSums != nil {
 		cageAreas := map[rune]sudoku.Area{}
-		for row, rowContent := range spec.cages {
+		for row, rowContent := range spec.Cages {
 			for col, cellContent := range rowContent {
 				area := cageAreas[cellContent]
 				area.Set(sudoku.CellLocation{row, col}, true)
@@ -38,29 +39,29 @@ func (spec sudokuSpec) setup(s sudoku.Sudoku) {
 			}
 		}
 
-		for key, sum := range spec.cageSums {
-			restriction.AddKillerCageRestriction(s, cageAreas[key], sum)
+		for key, sum := range spec.CageSums {
+			restriction2.AddKillerCageRestriction(s, cageAreas[key], sum)
 		}
 	}
 
-	if spec.sandwichRows != nil {
-		for row, sum := range spec.sandwichRows {
+	if spec.SandwichRows != nil {
+		for row, sum := range spec.SandwichRows {
 			if sum >= 0 {
-				s.AddRestriction(restriction.NewRowSandwichRestriction(row, sum))
+				s.AddRestriction(restriction2.NewRowSandwichRestriction(row, sum))
 			}
 		}
 	}
-	if spec.sandwichCols != nil {
-		for col, sum := range spec.sandwichCols {
+	if spec.SandwichCols != nil {
+		for col, sum := range spec.SandwichCols {
 			if sum >= 0 {
-				s.AddRestriction(restriction.NewColSandwichRestriction(col, sum))
+				s.AddRestriction(restriction2.NewColSandwichRestriction(col, sum))
 			}
 		}
 	}
 
-	if spec.thermometers != nil {
-		for _, thermo := range spec.thermometers {
-			restriction.AddThermometerRestriction(s, thermo)
+	if spec.Thermometers != nil {
+		for _, thermo := range spec.Thermometers {
+			restriction2.AddThermometerRestriction(s, thermo)
 			s.AddRestriction(restriction.NewUniqueRestriction(
 				"thermometer",
 				thermo...,
@@ -68,10 +69,10 @@ func (spec sudokuSpec) setup(s sudoku.Sudoku) {
 		}
 	}
 
-	if spec.palindromes != nil {
-		for _, p := range spec.palindromes {
+	if spec.Palindromes != nil {
+		for _, p := range spec.Palindromes {
 			for index := 0; index < len(p)/2; index++ {
-				s.AddRestriction(restriction.EqualRestriction{
+				s.AddRestriction(restriction2.EqualRestriction{
 					Cells: []sudoku.CellLocation{
 						p[index],
 						p[len(p)-index-1],
@@ -81,31 +82,31 @@ func (spec sudokuSpec) setup(s sudoku.Sudoku) {
 		}
 	}
 
-	if spec.anitKing {
-		restriction.AddAntiKingRestriction(s)
+	if spec.AntiKing {
+		restriction2.AddAntiKingRestriction(s)
 	}
 
-	if spec.anitKnight {
-		restriction.AddAntiKnighRestriction(s)
+	if spec.AntiKnight {
+		restriction2.AddAntiKnighRestriction(s)
 	}
 
-	if spec.nonConsecutive {
-		restriction.AddNonConsecutiveRestriction(s)
+	if spec.NonConsecutive {
+		restriction2.AddNonConsecutiveRestriction(s)
 	}
 
-	if spec.diagonals {
+	if spec.Diagonals {
 		restriction.AddDiagonalRestrictions(s)
 	}
 
-	if spec.colors {
+	if spec.Colors {
 		restriction.AddColorRestrictions(s)
 	}
 
-	if spec.rule159 {
-		restriction.Add159Restriction(s)
+	if spec.Rule159 {
+		restriction2.Add159Restriction(s)
 	}
 
-	for row, rowContent := range spec.rows {
+	for row, rowContent := range spec.Rows {
 		for col, cellContent := range rowContent {
 			cell := sudoku.CellLocation{row, col}
 			switch cellContent {
@@ -132,9 +133,9 @@ func (spec sudokuSpec) setup(s sudoku.Sudoku) {
 	}
 }
 
-type sudokuTests map[string]sudokuSpec
+type SudokuTests map[string]SudokuSpec
 
-func (tests sudokuTests) Run(t *testing.T) {
+func (tests SudokuTests) Run(t *testing.T) {
 	for name, spec := range tests {
 		name, spec := name, spec
 		t.Run(name, func(t *testing.T) {
@@ -150,8 +151,10 @@ func (tests sudokuTests) Run(t *testing.T) {
 			defer cancel()
 
 			s.SetLogger(sudoku.NewLogger())
-			assert.NoError(t, s.Solve(ctx))
-			assert.True(t, s.IsSolved())
+
+			slv := sudoku.NewSolver(s)
+			assert.NoError(t, slv.Solve(ctx))
+			assert.True(t, slv.IsSolved())
 			fmt.Printf("Stats: %+v\n", s.Stats())
 		})
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	restriction2 "github.com/lumaraf/sudoku-solver/extra/restriction"
 	"github.com/lumaraf/sudoku-solver/restriction"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
@@ -11,8 +12,8 @@ func main() {
 	s := sudoku.NewSudoku()
 	restriction.AddClassicRestrictions(s)
 
-	s.AddRestriction(restriction.AntiRelationRestriction{
-		Offsets: restriction.KnightsMove,
+	s.AddRestriction(restriction2.AntiRelationRestriction{
+		Offsets: restriction2.KnightsMove,
 		Masks: map[int]sudoku.Digits{
 			//1: sudoku.NewDigits(2),
 			2: sudoku.NewDigits(1, 3),

@@ -1,7 +1,8 @@
-package solver
+package strategy
 
 import (
-	"github.com/lumaraf/sudoku-solver/restriction"
+	"github.com/lumaraf/sudoku-solver/extra/restriction"
+	strategy2 "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -58,7 +59,7 @@ func (slv SandwichSolver) Name() string {
 	return "SandwichSolver"
 }
 
-func (slv SandwichSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv SandwichSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	start := -1
 	end := -1
 	for index, cell := range slv.cells {
@@ -93,7 +94,7 @@ func (slv SandwichSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 				}
 				area := sudoku.NewArea(slv.cells[start+1 : end]...)
 				for _, mask := range slv.combos.masks {
-					if CheckAreaMask(s, area, mask) != nil {
+					if strategy2.CheckAreaMask(s, area, mask) != nil {
 						hit = true
 						possibleEnds[end] = true
 					}
@@ -105,7 +106,7 @@ func (slv SandwichSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 				}
 			}
 		}
-		return []sudoku.Solver{slv}, nil
+		return []sudoku.Strategy{slv}, nil
 	}
 
 	return SandwichContentSolver{
@@ -129,7 +130,7 @@ type SandwichContentSolver struct {
 	area   sudoku.Area
 }
 
-func (slv SandwichContentSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv SandwichContentSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	count := slv.end - slv.start - 1
 	if count == 0 {
 		return nil, nil
@@ -170,8 +171,8 @@ func (slv SandwichContentSolver) AreaFilter() sudoku.Area {
 	return slv.area
 }
 
-func SandwichSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func SandwichSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if sandwich, ok := r.(restriction.SandwichRestriction); ok {
 			solvers = append(solvers, SandwichSolver{

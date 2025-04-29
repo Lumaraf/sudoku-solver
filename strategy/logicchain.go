@@ -1,4 +1,4 @@
-package solver
+package strategy
 
 import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
@@ -15,7 +15,7 @@ func (slv LogicChainSolver) AreaFilter() sudoku.Area {
 	return sudoku.Area{}.Not()
 }
 
-func (slv LogicChainSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv LogicChainSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	for _, cell := range s.ChangedArea().Locations {
 		d := s.Get(cell)
 		if d.Count() == 2 {
@@ -36,9 +36,9 @@ func (slv LogicChainSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 			}
 		}
 	}
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
-func LogicChainSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	return []sudoku.Solver{LogicChainSolver{}}
+func LogicChainSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	return []sudoku.Strategy{LogicChainSolver{}}
 }

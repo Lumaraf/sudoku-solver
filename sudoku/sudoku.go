@@ -8,42 +8,46 @@ import (
 
 var mutipleSolutionsError = errors.New("multiple solutions")
 
-type Sudoku interface {
+type Sudoku[D Digits, A Area] interface {
+	baseSpec
+	digitsSpec[D]
+	areaSpec[A]
+
 	// SetChainLimit sets the limit for the chain length in solving algorithms.
 	SetChainLimit(limit int)
 
 	// Get retrieves the digits at the specified cell location.
-	Get(l CellLocation) Digits
+	Get(l CellLocation) D
 
 	// Set assigns a value to the specified cell location.
 	Set(l CellLocation, v int) error
 
 	// Try attempts to apply a function to a clone of the Sudoku puzzle.
-	Try(f func(s Sudoku) error) error
+	Try(f func(s Sudoku[D, A]) error) error
 
 	// Mask restricts the possible digits at the specified cell location.
-	Mask(l CellLocation, d Digits) error
+	Mask(l CellLocation, d D) error
 
 	// RemoveMask removes the restriction of possible digits at the specified cell location.
-	RemoveMask(l CellLocation, d Digits) error
+	RemoveMask(l CellLocation, d D) error
 
 	// RemoveOption removes a specific digit option from the specified cell location.
 	RemoveOption(l CellLocation, v int) error
 
 	// SolvedArea returns the area of the grid that is solved.
-	SolvedArea() Area
+	SolvedArea() A
 
 	// ChangedArea returns the area of the grid that has changed.
-	ChangedArea() Area
+	ChangedArea() A
 
 	// NextChangedArea returns the area of the grid that will change next.
-	NextChangedArea() Area
+	NextChangedArea() A
 
 	// GetExclusionArea returns the exclusion area for the specified cell location.
-	GetExclusionArea(l CellLocation) Area
+	GetExclusionArea(l CellLocation) A
 
 	// SetLogger sets the logger for the Sudoku puzzle.
-	SetLogger(logger Logger)
+	SetLogger(logger Logger[D])
 
 	// Validate checks the validity of the current Sudoku puzzle state.
 	Validate() error
@@ -54,20 +58,19 @@ type Sudoku interface {
 	// Stats returns the statistics of the Sudoku puzzle.
 	Stats() Stats
 
-	// AddRestriction adds a restriction to the Sudoku puzzle.
-	AddRestriction(r Restriction)
+	//// Solve attempts to solve the Sudoku puzzle.
+	//Solve(ctx context.Context) error
 
-	// Solve attempts to solve the Sudoku puzzle.
-	Solve(ctx context.Context) error
-
-	// SolveWith attempts to solve the Sudoku puzzle using the provided solver factories.
-	SolveWith(ctx context.Context, factories ...SolverFactory) error
+	// SolveWith attempts to solve the Sudoku puzzle using the provided strategy factories.
+	SolveWith(ctx context.Context, factories ...StrategyFactory[D, A]) error
 
 	// GuessSolutions generates possible solutions by guessing.
-	GuessSolutions(ctx context.Context, g Guesser) func(func(Sudoku) bool)
+	//GuessSolutions(ctx context.Context, g Guesser[D,A]) func(func(Sudoku[D,A]) bool)
 
 	// IsSolved checks if the Sudoku puzzle is solved.
 	IsSolved() bool
+
+	getRestrictions() []Restriction[D, A]
 }
 
 type CellLocation struct {
@@ -79,18 +82,20 @@ func (l CellLocation) Box() int {
 	return l.Row/3*3 + l.Col/3
 }
 
-type sudoku struct {
-	grid            [9][9]Digits
-	exlusionAreas   [9][9]Area
-	restrictions    []Restriction
-	solveProcessors []SolveProcessor
+type sudoku[D Digits, A Area, G comparable, S size[D, A, G]] struct {
+	size[D, A, G]
+	grid            G
+	exclusionAreas  [][]A
+	restrictions    []Restriction[D, A]
+	validators      []Validator[D, A]
+	solveProcessors []SolveProcessor[D, A]
 	findAllOptions  bool
 	chainLimit      int
-	changed         Area
-	nextChanged     Area
-	solved          Area
+	changed         A
+	nextChanged     A
+	solved          A
 	stats           Stats
-	logger          Logger
+	logger          Logger[D]
 }
 
 type Stats struct {
@@ -102,225 +107,176 @@ type Stats struct {
 	GuessMisses        int
 }
 
-func NewSudoku() Sudoku {
-	//switch size {
-	//case 6:
-	//	return newSudoku[grid6, area6]()
-	//case 9:
-	//	return newSudoku[grid9, area9]()
-	//}
-	return newSudoku()
+func NewSudoku9x9(factories ...RestrictionFactory[Digits9, Area9x9]) (Sudoku[Digits9, Area9x9], error) {
+	builder := NewSudokuBuilder9x9()
+	for _, factory := range factories {
+		if err := builder.AddRestrictionFactory(factory); err != nil {
+			return nil, err
+		}
+	}
+	return builder.Build(), nil
 }
 
-func newSudoku() *sudoku {
-	s := sudoku{
+func newSudoku[D Digits, A Area, G comparable, S size[D, A, G]]() *sudoku[D, A, G, S] {
+	sizeSpec := *new(S)
+	s := sudoku[D, A, G, S]{
+		size:        sizeSpec,
 		chainLimit:  2,
-		nextChanged: Area{}.Not(),
-		logger:      voidLogger{},
+		nextChanged: sizeSpec.InvertArea(*new(A)),
+		logger:      voidLogger[D]{},
 	}
-	for row := 0; row < 9; row++ {
-		for col := 0; col < 9; col++ {
-			s.grid[row][col] = AllDigits
+	s.exclusionAreas = make([][]A, s.Size())
+	for row := 0; row < s.Size(); row++ {
+		s.exclusionAreas[row] = make([]A, s.Size())
+		for col := 0; col < s.Size(); col++ {
+			cell := s.GridCell(&s.grid, row, col)
+			*cell = sizeSpec.AllDigits()
 		}
 	}
 	return &s
 }
 
-func (s *sudoku) SetChainLimit(limit int) {
+func (s *sudoku[D, A, G, S]) SetChainLimit(limit int) {
 	s.chainLimit = limit
 }
 
-func (s *sudoku) Get(l CellLocation) Digits {
-	return s.grid[l.Row][l.Col]
+func (s *sudoku[D, A, G, S]) Get(l CellLocation) D {
+	cell := s.GridCell(&s.grid, l.Row, l.Col)
+	return *cell
 }
 
-func (s *sudoku) Set(l CellLocation, v int) error {
-	if err := checkValue(v); err != nil {
+func (s *sudoku[D, A, G, S]) Set(l CellLocation, v int) error {
+	if err := s.checkValue(v); err != nil {
 		return err
 	}
-	cell := &s.grid[l.Row][l.Col]
-	if !cell.CanContain(v) {
+	cell := s.GridCell(&s.grid, l.Row, l.Col)
+	if !(*cell).CanContain(v) {
 		return errors.New("cell doesn't allow value")
 	}
-	if cell.Count() > 1 {
-		s.nextChanged.Set(l, true)
+	if (*cell).Count() > 1 {
+		s.AreaWith(&s.nextChanged, l)
 		s.stats.CellUpdates++
 		oldCell := *cell
-		cell.ForceValue(v)
+		*cell = s.NewDigits(v)
 		s.logger.UpdateCell(l, oldCell, *cell)
 		return s.processSolve(l, *cell)
 	}
 	return nil
 }
 
-func (s *sudoku) Try(f func(s Sudoku) error) error {
+func (s *sudoku[D, A, G, S]) Try(f func(s Sudoku[D, A]) error) error {
 	clone := *s
-	clone.logger = voidLogger{}
-	clone.nextChanged = Area{}
+	clone.logger = voidLogger[D]{}
+	clone.nextChanged = *new(A)
 	return f(&clone)
 }
 
-func (s *sudoku) Mask(l CellLocation, d Digits) error {
-	target := &s.grid[l.Row][l.Col]
-	if *target&^d != 0 {
-		s.nextChanged.Set(l, true)
+func (s *sudoku[D, A, G, S]) Mask(l CellLocation, d D) error {
+	target := s.GridCell(&s.grid, l.Row, l.Col)
+	if !s.IntersectDigits(*target, s.InvertDigits(d)).Empty() {
+		s.AreaWith(&s.nextChanged, l)
 		s.stats.CellUpdates++
 		oldDigits := *target
-		newDigits := *target & d
-		if newDigits == 0 {
+		newDigits := s.IntersectDigits(*target, d)
+		if newDigits.Empty() {
 			return ErrEmptyCell(l)
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
-		if target.Count() == 1 {
+		if (*target).Count() == 1 {
 			return s.processSolve(l, newDigits)
 		}
 	}
 	return nil
 }
 
-func (s *sudoku) RemoveMask(l CellLocation, d Digits) error {
-	target := &s.grid[l.Row][l.Col]
-	if *target&d != 0 {
-		s.nextChanged.Set(l, true)
+func (s *sudoku[D, A, G, S]) RemoveMask(l CellLocation, d D) error {
+	target := s.GridCell(&s.grid, l.Row, l.Col)
+	if !s.IntersectDigits(*target, d).Empty() {
+		s.AreaWith(&s.nextChanged, l)
 		s.stats.CellUpdates++
 		oldDigits := *target
-		newDigits := (*target & ^d) & AllDigits
-		if newDigits == 0 {
-			s.solved.Set(l, false)
+		newDigits := s.IntersectDigits(*target, s.InvertDigits(d))
+		if newDigits.Empty() {
+			s.AreaWithout(&s.solved, l)
 			return ErrEmptyCell(l)
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
-		if target.Count() == 1 {
+		if (*target).Count() == 1 {
 			return s.processSolve(l, *target)
 		}
 	}
 	return nil
 }
 
-func (s *sudoku) RemoveOption(l CellLocation, v int) error {
-	if err := checkValue(v); err != nil {
+func (s *sudoku[D, A, G, S]) RemoveOption(l CellLocation, v int) error {
+	if err := s.checkValue(v); err != nil {
 		return err
 	}
-	mask := Digits(0)
-	mask.AddOption(v)
+	mask := s.NewDigits(v)
 	return s.RemoveMask(l, mask)
 }
 
-func (s *sudoku) RequireValueInArea(v int, a Area) error {
-	overlap := Area{}.Not()
-	for _, l := range a.Locations {
-		overlap = overlap.And(s.GetExclusionArea(l))
-	}
-	for _, l := range overlap.Locations {
-		if err := s.RemoveOption(l, v); err != nil {
-			return err
-		}
+//func (s *sudoku[D, A, G, S]) RequireValueInArea(v int, a A) error {
+//	overlap := Area{}.Not()
+//	for _, l := range a.Locations {
+//		overlap = overlap.And(s.GetExclusionArea(l))
+//	}
+//	for _, l := range overlap.Locations {
+//		if err := s.RemoveOption(l, v); err != nil {
+//			return err
+//		}
+//	}
+//	return nil
+//}
+
+func (s *sudoku[D, A, G, S]) checkValue(v int) error {
+	if v < 1 || v > s.Size() {
+		return ErrValueOutOfRange
 	}
 	return nil
 }
 
-func (s *sudoku) SolvedArea() Area {
+func (s *sudoku[D, A, G, S]) SolvedArea() A {
 	return s.solved
 }
 
-func (s *sudoku) ChangedArea() Area {
+func (s *sudoku[D, A, G, S]) ChangedArea() A {
 	return s.changed
 }
 
-func (s *sudoku) NextChangedArea() Area {
+func (s *sudoku[D, A, G, S]) NextChangedArea() A {
 	return s.nextChanged
 }
 
-func (s *sudoku) GetExclusionArea(l CellLocation) Area {
-	return s.exlusionAreas[l.Row][l.Col]
+func (s *sudoku[D, A, G, S]) GetExclusionArea(l CellLocation) A {
+	return s.exclusionAreas[l.Row][l.Col]
 }
 
-func (s *sudoku) SetLogger(logger Logger) {
+func (s *sudoku[D, A, G, S]) SetLogger(logger Logger[D]) {
 	s.logger = logger
 }
 
-func (s *sudoku) Validate() error {
-	for _, r := range s.restrictions {
-		if err := r.Validate(s); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *sudoku) Print() error {
-	//lines := [][]rune{
-	//	[]rune("╔═══════╤═══════╤═══════╦═══════╤═══════╤═══════╦═══════╤═══════╤═══════╗"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╠═══════╪═══════╪═══════╬═══════╪═══════╪═══════╬═══════╪═══════╪═══════╣"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╠═══════╪═══════╪═══════╬═══════╪═══════╪═══════╬═══════╪═══════╪═══════╣"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-	//	[]rune("╚═══════╧═══════╧═══════╩═══════╧═══════╧═══════╩═══════╧═══════╧═══════╝"),
-	//}
-	//
-	//count := 0
-	//for row := 0; row < 9; row++ {
-	//	for col := 0; col < 9; col++ {
-	//		top := 1 + row*4
-	//		left := 2 + col*8
-	//		d := s.grid[row][col]
-	//		for v := range d.Values {
-	//			lines[top+(v-1)/3][left+((v-1)%3)*2] = rune(v + '0')
-	//			count++
-	//		}
-	//	}
-	//}
-	//
-	//for _, l := range lines {
-	//	fmt.Println(string(l))
-	//}
-
+func (s *sudoku[D, A, G, S]) Print() error {
 	count := 0
 	for row := 0; row < 9; row++ {
 		for col := 0; col < 9; col++ {
-			d := s.grid[row][col]
-			count += d.Count()
+			d := s.GridCell(&s.grid, row, col)
+			count += (*d).Count()
 		}
 	}
 
-	PrintGrid(s)
+	PrintGrid[D, A](s)
 	fmt.Printf("%.2f%% solved\n", (1-float64(count-81)/(81*8))*100)
+	fmt.Println(s.Stats())
 	return nil
 }
 
-func (s *sudoku) Stats() Stats {
+func (s *sudoku[D, A, G, S]) Stats() Stats {
 	return s.stats
+}
+
+func (s *sudoku[D, A, G, S]) getRestrictions() []Restriction[D, A] {
+	return s.restrictions
 }

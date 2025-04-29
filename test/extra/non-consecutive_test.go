@@ -1,13 +1,14 @@
-package test
+package extra
 
 import (
+	"github.com/lumaraf/sudoku-solver/test"
 	"testing"
 )
 
 func TestNonConsecutive(t *testing.T) {
-	sudokuTests{
+	test.SudokuTests{
 		"one": {
-			rows: []string{
+			Rows: []string{
 				"        5",
 				" 1    7  ",
 				"7        ",
@@ -18,7 +19,7 @@ func TestNonConsecutive(t *testing.T) {
 				"  1    7 ",
 				"8        ",
 			},
-			nonConsecutive: true,
+			NonConsecutive: true,
 		},
 	}.Run(t)
 }

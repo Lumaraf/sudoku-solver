@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func LoadGridFromString(s Sudoku, grid string) (err error) {
+func LoadGridFromString[D Digits, A Area](s Sudoku[D, A], grid string) (err error) {
 	rows := strings.Split(grid, "\n")
 	for row, rowContent := range rows {
 		for col, cellContent := range rowContent {
@@ -22,61 +22,73 @@ func LoadGridFromString(s Sudoku, grid string) (err error) {
 	return
 }
 
-func PrintGrid(s Sudoku) {
-	lines := [][]rune{
-		[]rune("╔═══════╤═══════╤═══════╦═══════╤═══════╤═══════╦═══════╤═══════╤═══════╗"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╠═══════╪═══════╪═══════╬═══════╪═══════╪═══════╬═══════╪═══════╪═══════╣"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╠═══════╪═══════╪═══════╬═══════╪═══════╪═══════╬═══════╪═══════╪═══════╣"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╟───────┼───────┼───────╫───────┼───────┼───────╫───────┼───────┼───────╢"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("║       │       │       ║       │       │       ║       │       │       ║"),
-		[]rune("╚═══════╧═══════╧═══════╩═══════╧═══════╧═══════╩═══════╧═══════╧═══════╝"),
-	}
+func PrintGrid[D Digits, A Area](s Sudoku[D, A]) {
+	boxRows, boxCols := s.BoxSize()
+	gridSize := s.Size()
 
-	count := 0
-	for row := 0; row < 9; row++ {
-		for col := 0; col < 9; col++ {
-			top := 1 + row*4
-			left := 2 + col*8
-			d := s.Get(CellLocation{row, col})
-			for v := range d.Values {
-				lines[top+(v-1)/3][left+((v-1)%3)*2] = rune(v + '0')
-				count++
+	rowLength := boxCols*(boxCols*2+1) + 1
+
+	createLine := func(start, edge, fill, boxEdge, end rune) string {
+		line := make([]rune, 0, rowLength)
+		line = append(line, start)
+		for col := 0; col < gridSize; col++ {
+			if col > 0 {
+				line = append(line, edge)
+			}
+			for i := 0; i < boxCols*2+1; i++ {
+				line = append(line, fill)
 			}
 		}
+		line = append(line, end)
+		return string(line)
 	}
 
-	for _, l := range lines {
-		fmt.Println(string(l))
+	topLine := createLine('╔', '╤', '═', '╦', '╗')
+	midLine := createLine('╟', '┼', '─', '╫', '╢')
+	boxLine := createLine('╠', '╪', '═', '╬', '╣')
+	bottomLine := createLine('╚', '╧', '═', '╩', '╝')
+
+	fmt.Println(topLine)
+	for row := 0; row < gridSize; row++ {
+		for subRow := 0; subRow < boxRows; subRow++ {
+			line := make([]rune, 0, rowLength)
+			for col := 0; col < gridSize; col++ {
+				if col%boxCols == 0 {
+					line = append(line, '║')
+				} else {
+					line = append(line, '│')
+				}
+				line = append(line, ' ')
+				cell := s.Get(CellLocation{Row: row, Col: col})
+				for digit := subRow * boxCols; digit < (subRow+1)*boxCols; digit++ {
+					if cell.CanContain(digit + 1) {
+						line = append(line, rune('0'+digit+1))
+					} else {
+						line = append(line, ' ')
+					}
+					line = append(line, ' ')
+				}
+			}
+			line = append(line, '║')
+			fmt.Println(string(line))
+		}
+		if (row+1)%boxRows == 0 && row+1 < gridSize {
+			fmt.Println(boxLine)
+		} else if row+1 < gridSize {
+			fmt.Println(midLine)
+		}
 	}
+	fmt.Println(bottomLine)
 }
+
+//func GetRestrictions[D Digits, A Area, R Restriction[D, A]](s Sudoku[D, A]) func(yield func(R) bool) {
+//	return func(yield func(R) bool) {
+//		for _, restriction := range s.getRestrictions() {
+//			if r, ok := restriction.(R); ok {
+//				if !yield(r) {
+//					return
+//				}
+//			}
+//		}
+//	}
+//}

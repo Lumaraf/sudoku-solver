@@ -1,8 +1,4 @@
-restrictions
-    diagonals
-    area-sum
-    sandwich
-    non-consecutive
-    anti-king
-    anti-knight
-    159
+# TODO
+
+- other grid sizes
+- samurai sudoku

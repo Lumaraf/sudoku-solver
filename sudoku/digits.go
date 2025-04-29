@@ -5,43 +5,50 @@ import (
 	"math/bits"
 )
 
-const AllDigits = Digits(0b111111111)
+//const AllDigits = digits16(0b111111111)
 
 var ErrValueOutOfRange = errors.New("value out of range")
 
-type Digits uint16
+type Digits interface {
+	comparable
+
+	CanContain(v int) bool
+	Empty() bool
+	Count() int
+	Single() (v int, isSingle bool)
+	Min() int
+	Max() int
+	Values(func(int) bool)
+}
 
 type Values func(func(int) bool)
 
-func NewDigits(values ...int) Digits {
-	d := Digits(0)
-	for _, v := range values {
-		d.AddOption(v)
-	}
-	return d
-}
+type Digits4 = digits16
+type Digits6 = digits16
+type Digits9 = digits16
+type Digits16 = digits16
 
-func (c Digits) CanContain(v int) bool {
+//type Digits25 = digits32
+
+type digits16 uint16
+
+func (c digits16) CanContain(v int) bool {
 	return uint16(c)&c.getBit(v) != 0
 }
 
-func (c *Digits) AddOption(v int) {
-	*c = *c | Digits(c.getBit(v))
+func (c digits16) withOption(v int) digits16 {
+	return c | digits16(c.getBit(v))
 }
 
-func (c *Digits) RemoveOption(v int) {
-	*c = *c & (^Digits(c.getBit(v)))
+func (c digits16) Empty() bool {
+	return c == 0
 }
 
-func (c *Digits) ForceValue(v int) {
-	*c = Digits(c.getBit(v))
-}
-
-func (c Digits) Count() int {
+func (c digits16) Count() int {
 	return bits.OnesCount16(uint16(c))
 }
 
-func (c Digits) Single() (v int, isSingle bool) {
+func (c digits16) Single() (v int, isSingle bool) {
 	isSingle = c.Count() == 1
 	if isSingle {
 		v = bits.TrailingZeros16(uint16(c)) + 1
@@ -49,11 +56,11 @@ func (c Digits) Single() (v int, isSingle bool) {
 	return
 }
 
-func (c Digits) getBit(v int) uint16 {
+func (c digits16) getBit(v int) uint16 {
 	return 1 << (v - 1)
 }
 
-func (c Digits) Values(yield func(int) bool) {
+func (c digits16) Values(yield func(int) bool) {
 	mask := uint16(c)
 	for mask != 0 {
 		lz := bits.TrailingZeros16(mask)
@@ -64,17 +71,10 @@ func (c Digits) Values(yield func(int) bool) {
 	}
 }
 
-func (c Digits) Min() int {
+func (c digits16) Min() int {
 	return bits.TrailingZeros16(uint16(c)) + 1
 }
 
-func (c Digits) Max() int {
-	return 16 - bits.LeadingZeros16(uint16(c))
-}
-
-func checkValue(v int) error {
-	if v < 1 || v > 9 {
-		return ErrValueOutOfRange
-	}
-	return nil
+func (c digits16) Max() int {
+	return 64 - bits.LeadingZeros16(uint16(c))
 }

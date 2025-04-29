@@ -1,4 +1,4 @@
-package solver
+package strategy
 
 import (
 	"github.com/lumaraf/sudoku-solver/restriction"
@@ -14,7 +14,7 @@ func (slv UniqueExclusionSolver) Name() string {
 	return "UniqueExclusionSolver"
 }
 
-func (slv UniqueExclusionSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv UniqueExclusionSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	for _, cell := range slv.area.And(s.SolvedArea()).Locations {
 		slv.mask = slv.mask & ^s.Get(cell)
 	}
@@ -44,15 +44,15 @@ func (slv UniqueExclusionSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error)
 			}
 		}
 	}
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
 func (slv UniqueExclusionSolver) AreaFilter() sudoku.Area {
 	return slv.area
 }
 
-func UniqueExclusionSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func UniqueExclusionSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if unique, ok := r.(restriction.UniqueRestriction); ok {
 			if unique.Area().Size() == 9 {

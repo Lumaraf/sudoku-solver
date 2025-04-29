@@ -1,7 +1,7 @@
-package solver
+package strategy
 
 import (
-	"github.com/lumaraf/sudoku-solver/restriction"
+	"github.com/lumaraf/sudoku-solver/extra/restriction"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -19,7 +19,7 @@ func (slv RelationSolver) AreaFilter() sudoku.Area {
 	return sudoku.Area{}.Not()
 }
 
-func (slv RelationSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv RelationSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	targetArea := sudoku.NewArea()
 	for _, cell := range s.SolvedArea().Locations {
 		for offsetCell := range slv.offsets.Locations(cell) {
@@ -49,11 +49,11 @@ func (slv RelationSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 		}
 	}
 
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
-func RelationSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func RelationSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if r, ok := r.(restriction.RelationRestriction); ok {
 			solvers = append(solvers, RelationSolver{

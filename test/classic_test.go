@@ -7,9 +7,9 @@ import (
 )
 
 func TestClassic(t *testing.T) {
-	sudokuTests{
+	SudokuTests{
 		"easy": {
-			rows: []string{
+			Rows: []string{
 				" 3       ",
 				"   195   ",
 				"  8    6 ",
@@ -22,7 +22,7 @@ func TestClassic(t *testing.T) {
 			},
 		},
 		"loneliest number": {
-			rows: []string{
+			Rows: []string{
 				"  23 67  ",
 				"   4 5   ",
 				"3       8",
@@ -35,7 +35,7 @@ func TestClassic(t *testing.T) {
 			},
 		},
 		"impossible": {
-			rows: []string{
+			Rows: []string{
 				"8        ",
 				"  36     ",
 				" 7  9 2  ",
@@ -57,8 +57,8 @@ func BenchmarkClassic(b *testing.B) {
 		s := sudoku.NewSudoku()
 		s.SetChainLimit(1)
 		//s.EnableGuessing()
-		sudokuSpec{
-			rows: []string{
+		SudokuSpec{
+			Rows: []string{
 				" 3       ",
 				"   195   ",
 				"  8    6 ",

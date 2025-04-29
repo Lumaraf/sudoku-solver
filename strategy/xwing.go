@@ -1,4 +1,4 @@
-package solver
+package strategy
 
 import (
 	"github.com/lumaraf/sudoku-solver/restriction"
@@ -14,7 +14,7 @@ func (slv XWingSolver) Name() string {
 	return "XWingSolver"
 }
 
-func (slv XWingSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv XWingSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	rows := make([]int, 0, len(slv.rows))
 	for _, row := range slv.rows {
 		if !sudoku.RowArea(row).And(s.SolvedArea().Not()).Empty() {
@@ -38,7 +38,7 @@ func (slv XWingSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 	for digit := 1; digit <= 9; digit++ {
 		slv.findXWing(s, digit)
 	}
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
 func (slv XWingSolver) findXWing(s sudoku.Sudoku, digit int) bool {
@@ -135,7 +135,7 @@ func (slv XWingSolver) AreaFilter() sudoku.Area {
 	return sudoku.Area{}.Not()
 }
 
-func XWingSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
+func XWingSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
 	areas := make(map[sudoku.Area]bool, 18)
 	for _, r := range restrictions {
 		if unique, ok := r.(restriction.UniqueRestriction); ok {
@@ -153,7 +153,7 @@ func XWingSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
 		}
 	}
 	if len(rows) > 1 || len(cols) > 1 {
-		return []sudoku.Solver{XWingSolver{
+		return []sudoku.Strategy{XWingSolver{
 			rows: rows,
 			cols: cols,
 		}}

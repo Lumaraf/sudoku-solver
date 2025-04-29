@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	restriction2 "github.com/lumaraf/sudoku-solver/extra/restriction"
 	"github.com/lumaraf/sudoku-solver/restriction"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
@@ -35,7 +36,7 @@ func main() {
 	//})
 	//restriction.AddAntiKingRestriction(s)
 	for n := 2; n <= 6; n++ {
-		restriction.AddKillerCageRestriction(
+		restriction2.AddKillerCageRestriction(
 			s,
 			sudoku.NewArea(
 				sudoku.CellLocation{n, 2},
@@ -46,7 +47,7 @@ func main() {
 			),
 			25,
 		)
-		restriction.AddKillerCageRestriction(
+		restriction2.AddKillerCageRestriction(
 			s,
 			sudoku.NewArea(
 				sudoku.CellLocation{2, n},

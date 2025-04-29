@@ -1,9 +1,9 @@
-package solver
+package strategy
 
 import (
 	"errors"
+	"github.com/lumaraf/sudoku-solver/extra/restriction"
 
-	"github.com/lumaraf/sudoku-solver/restriction"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -17,7 +17,7 @@ func (slv IncreaseSolver) Name() string {
 	return "IncreaseSolver"
 }
 
-func (slv IncreaseSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv IncreaseSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	for {
 		first := s.Get(slv.first)
 		second := s.Get(slv.second)
@@ -50,15 +50,15 @@ func (slv IncreaseSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 	if first.Count() == 1 || second.Count() == 1 {
 		return nil, nil
 	}
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
 func (slv IncreaseSolver) AreaFilter() sudoku.Area {
 	return slv.area
 }
 
-func IncreaseSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func IncreaseSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if inc, ok := r.(restriction.IncreaseRestriction); ok {
 			solvers = append(solvers, IncreaseSolver{

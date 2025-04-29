@@ -1,4 +1,4 @@
-package solver
+package strategy
 
 import (
 	"github.com/lumaraf/sudoku-solver/sudoku"

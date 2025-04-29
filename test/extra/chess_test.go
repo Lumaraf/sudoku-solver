@@ -1,13 +1,14 @@
-package test
+package extra
 
 import (
+	"github.com/lumaraf/sudoku-solver/test"
 	"testing"
 )
 
 func TestChess(t *testing.T) {
-	sudokuTests{
+	test.SudokuTests{
 		"anti knight": {
-			rows: []string{
+			Rows: []string{
 				" 5   9   ",
 				"8        ",
 				"     3 4 ",
@@ -18,10 +19,10 @@ func TestChess(t *testing.T) {
 				"  3 1   8",
 				"   9   2 ",
 			},
-			anitKnight: true,
+			AntiKnight: true,
 		},
 		"miracle": {
-			rows: []string{
+			Rows: []string{
 				"         ",
 				"         ",
 				"         ",
@@ -32,12 +33,12 @@ func TestChess(t *testing.T) {
 				"         ",
 				"         ",
 			},
-			anitKing:       true,
-			anitKnight:     true,
-			nonConsecutive: true,
+			AntiKing:       true,
+			AntiKnight:     true,
+			NonConsecutive: true,
 		},
 		"159": {
-			rows: []string{
+			Rows: []string{
 				"         ",
 				"         ",
 				"    E    ",
@@ -48,8 +49,8 @@ func TestChess(t *testing.T) {
 				"         ",
 				"         ",
 			},
-			anitKnight: true,
-			rule159:    true,
+			AntiKnight: true,
+			Rule159:    true,
 		},
 	}.Run(t)
 }

@@ -1,4 +1,4 @@
-package solver
+package strategy
 
 import (
 	"github.com/lumaraf/sudoku-solver/restriction"
@@ -17,7 +17,7 @@ func (slv UniqueIntersectionSolver) AreaFilter() sudoku.Area {
 	return slv.area
 }
 
-func (slv UniqueIntersectionSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv UniqueIntersectionSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	valueCounts := [9]int{}
 	for _, cell := range slv.area.And(s.SolvedArea().Not()).Locations {
 		for v := range s.Get(cell).Values {
@@ -31,7 +31,7 @@ func (slv UniqueIntersectionSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, err
 			}
 		}
 	}
-	return []sudoku.Solver{slv}, nil
+	return []sudoku.Strategy{slv}, nil
 }
 
 func (slv UniqueIntersectionSolver) checkValue(s sudoku.Sudoku, v int) error {
@@ -73,8 +73,8 @@ func (slv UniqueIntersectionSolver) checkValue(s sudoku.Sudoku, v int) error {
 	return nil
 }
 
-func UniqueIntersectionSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func UniqueIntersectionSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if unique, ok := r.(restriction.UniqueRestriction); ok {
 			if unique.Area().Size() == 9 {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/lumaraf/sudoku-solver/restriction"
-	_ "github.com/lumaraf/sudoku-solver/solver"
+	_ "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 	"math"
 )

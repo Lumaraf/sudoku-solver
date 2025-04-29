@@ -1,9 +1,9 @@
-package solver
+package strategy
 
 import (
 	"errors"
-	"github.com/lumaraf/sudoku-solver/restriction"
-
+	"github.com/lumaraf/sudoku-solver/extra/restriction"
+	strategy2 "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -17,7 +17,7 @@ func (slv AreaSumSolver) Name() string {
 	return "AreaSumSolver"
 }
 
-func (slv AreaSumSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv AreaSumSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	count := slv.area.Size()
 	allMasks := sudoku.Digits(0)
 	cellMasks := make([]sudoku.Digits, count)
@@ -25,7 +25,7 @@ func (slv AreaSumSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 	possibleMasks := make([]sudoku.Digits, 0, len(slv.masks))
 	for _, mask := range slv.masks {
 		if mask.Count() == count {
-			sets := CheckAreaMask(s, slv.area, mask)
+			sets := strategy2.CheckAreaMask(s, slv.area, mask)
 			if sets == nil {
 				continue
 			}
@@ -65,7 +65,7 @@ func (slv AreaSumSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 		return nil, nil
 	}
 
-	return []sudoku.Solver{
+	return []sudoku.Strategy{
 		AreaSumSolver{
 			masks:       possibleMasks,
 			area:        slv.area,
@@ -78,8 +78,8 @@ func (slv AreaSumSolver) AreaFilter() sudoku.Area {
 	return slv.area
 }
 
-func AreaSumSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func AreaSumSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if cage, ok := r.(restriction.KillerCageRestriction); ok {
 			solvers = append(solvers, AreaSumSolver{

@@ -1,0 +1,15 @@
+package sudoku
+
+type Validator[D Digits, A Area] interface {
+	Name() string
+	Validate(s Sudoku[D, A]) error
+}
+
+func (s *sudoku[D, A, G, S]) Validate() error {
+	for _, v := range s.validators {
+		if err := v.Validate(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}

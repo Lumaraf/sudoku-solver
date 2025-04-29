@@ -1,9 +1,8 @@
-package solver
+package strategy
 
 import (
 	"errors"
-	"github.com/lumaraf/sudoku-solver/restriction"
-
+	"github.com/lumaraf/sudoku-solver/extra/restriction"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -29,7 +28,7 @@ func (slv KillerCageSolver) Name() string {
 	return "KillerCageSolver"
 }
 
-func (slv KillerCageSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
+func (slv KillerCageSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	possibleMasks := make([]sudoku.Digits, 0, len(slv.masks))
 	var errs []error
 	for _, mask := range slv.masks {
@@ -51,7 +50,7 @@ func (slv KillerCageSolver) Solve(s sudoku.Sudoku) ([]sudoku.Solver, error) {
 		return nil, errors.Join(errs...)
 	}
 
-	return []sudoku.Solver{
+	return []sudoku.Strategy{
 		KillerCageSolver{
 			masks: possibleMasks,
 			area:  slv.area,
@@ -63,8 +62,8 @@ func (slv KillerCageSolver) AreaFilter() sudoku.Area {
 	return slv.area
 }
 
-func KillerCageSolverFactory(restrictions []sudoku.Restriction) []sudoku.Solver {
-	solvers := []sudoku.Solver{}
+func KillerCageSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
+	solvers := []sudoku.Strategy{}
 	for _, r := range restrictions {
 		if cage, ok := r.(restriction.KillerCageRestriction); ok {
 			solvers = append(solvers, KillerCageSolver{
