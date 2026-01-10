@@ -7,6 +7,8 @@ import (
 )
 
 type Area interface {
+	comparable
+
 	Get(l CellLocation) bool
 	Locations(yield func(int, CellLocation) bool)
 	RandomLocation() CellLocation
@@ -15,87 +17,72 @@ type Area interface {
 	String() string
 }
 
-type Area9x9 = area128
-
-type area128 [2]uint64
-
-//var (
-//	rowAreas [9]Area
-//	colAreas [9]Area
-//	boxAreas [9]Area
-//)
-//
-//func init() {
-//	for i := 0; i < 9; i++ {
-//		for c := 0; c < 9; c++ {
-//			rowAreas[i].Set(CellLocation{i, c}, true)
-//			colAreas[i].Set(CellLocation{c, i}, true)
-//			boxAreas[i].Set(CellLocation{3*(i/3) + c/3, 3*(i%3) + c%3}, true)
-//		}
-//	}
-//}
-
-//func NewArea[A Area](locations ...CellLocation) (a A) {
-//	a = *new(A)
-//	for _, l := range locations {
-//		a.Set(l, true)
-//	}
-//	return
-//}
-
-//func RowArea(row int) Area {
-//	if row < 0 || row >= 9 {
-//		return Area{}
-//	}
-//	return rowAreas[row]
-//}
-//
-//func ColArea(col int) Area {
-//	if col < 0 || col >= 9 {
-//		return Area{}
-//	}
-//	return colAreas[col]
-//}
-//
-//func BoxArea(box int) Area {
-//	if box < 0 || box >= 9 {
-//		return Area{}
-//	}
-//	return boxAreas[box]
-//}
-
-func newArea() Area {
-	return area128{}
+type gridSize interface {
+	gridSize() int
 }
 
-func (a area128) Get(l CellLocation) bool {
+type area128[GS gridSize] struct {
+	gs   GS
+	bits [2]uint64
+}
+
+func (a area128[GS]) Get(l CellLocation) bool {
 	index, mask := a.getMask(l)
-	return a[index]&mask != 0
+	return a.bits[index]&mask != 0
 }
 
-func (a area128) with(l CellLocation, v bool) area128 {
+func (a area128[GS]) and(b area128[GS]) area128[GS] {
+	return area128[GS]{
+		a.gs,
+		[2]uint64{
+			a.bits[0] & b.bits[0],
+			a.bits[1] & b.bits[1],
+		},
+	}
+}
+func (a area128[GS]) or(b area128[GS]) area128[GS] {
+	return area128[GS]{
+		a.gs,
+		[2]uint64{
+			a.bits[0] | b.bits[0],
+			a.bits[1] | b.bits[1],
+		},
+	}
+}
+func (a area128[GS]) not() area128[GS] {
+	return area128[GS]{
+		a.gs,
+		[2]uint64{
+			^a.bits[0],
+			^a.bits[1],
+		},
+	}
+}
+
+func (a area128[GS]) with(l CellLocation, v bool) area128[GS] {
 	index, mask := a.getMask(l)
 	if v {
-		a[index] = a[index] | mask
+		a.bits[index] = a.bits[index] | mask
 	} else {
-		a[index] = a[index] & ^mask
+		a.bits[index] = a.bits[index] & ^mask
 	}
 	return a
 }
 
-func (a area128) getMask(l CellLocation) (int, uint64) {
-	idx := l.Row*9 + l.Col
+func (a area128[GS]) getMask(l CellLocation) (int, uint64) {
+	idx := l.Row*a.gs.gridSize() + l.Col
 	return idx / 64, 1 << (uint64(idx) % 64)
 }
 
-func (a area128) Locations(yield func(int, CellLocation) bool) {
+func (a area128[GS]) Locations(yield func(int, CellLocation) bool) {
 	index := 0
-	for idx, b := range a {
+	size := a.gs.gridSize()
+	for idx, b := range a.bits {
 		for b != 0 {
 			lz := bits.TrailingZeros64(b)
 			b = b & ^(1 << lz)
 			pos := idx*64 + lz
-			if !yield(index, CellLocation{pos / 9, pos % 9}) {
+			if !yield(index, CellLocation{pos / size, pos % size}) {
 				return
 			}
 			index++
@@ -103,18 +90,19 @@ func (a area128) Locations(yield func(int, CellLocation) bool) {
 	}
 }
 
-func (a area128) RandomLocation() CellLocation {
-	return a.nextCell(rand.Intn(81))
+func (a area128[GS]) RandomLocation() CellLocation {
+	size := a.gs.gridSize()
+	return a.nextCell(rand.Intn(size * size))
 }
 
-func (a area128) nextCell(index int) CellLocation {
-	var maskedArea area128
+func (a area128[GS]) nextCell(index int) CellLocation {
+	var maskedArea area128[GS]
 	if index < 64 {
-		maskedArea[0] = a[0] & ^(math.MaxUint64 >> (64 - index))
-		maskedArea[1] = a[1]
+		maskedArea.bits[0] = a.bits[0] & ^(math.MaxUint64 >> (64 - index))
+		maskedArea.bits[1] = a.bits[1]
 	} else {
-		maskedArea[0] = 0
-		maskedArea[1] = a[1] & ^(math.MaxUint64 >> (128 - index))
+		maskedArea.bits[0] = 0
+		maskedArea.bits[1] = a.bits[1] & ^(math.MaxUint64 >> (128 - index))
 	}
 	for _, cell := range maskedArea.Locations {
 		return cell
@@ -125,18 +113,19 @@ func (a area128) nextCell(index int) CellLocation {
 	return CellLocation{}
 }
 
-func (a area128) Size() int {
-	return bits.OnesCount64(a[0]) + bits.OnesCount64(a[1])
+func (a area128[GS]) Size() int {
+	return bits.OnesCount64(a.bits[0]) + bits.OnesCount64(a.bits[1])
 }
 
-func (a area128) Empty() bool {
-	return a[0] == 0 && a[1] == 0
+func (a area128[GS]) Empty() bool {
+	return a.bits[0] == 0 && a.bits[1] == 0
 }
 
-func (a area128) String() string {
-	grid := make([]rune, 0, 9*9+9)
-	for row := 0; row < 9; row++ {
-		for col := 0; col < 9; col++ {
+func (a area128[GS]) String() string {
+	size := a.gs.gridSize()
+	grid := make([]rune, 0, size*size+size)
+	for row := 0; row < size; row++ {
+		for col := 0; col < size; col++ {
 			if a.Get(CellLocation{row, col}) {
 				grid = append(grid, 'X')
 			} else {

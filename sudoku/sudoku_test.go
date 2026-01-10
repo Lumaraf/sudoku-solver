@@ -16,7 +16,7 @@ func TestSetAndGet(t *testing.T) {
 	assert.Error(t, s.Set(loc, 0))
 	assert.Error(t, s.Set(loc, 10))
 
-	assert.Equal(t, area128{}, s.NextChangedArea())
+	assert.Equal(t, Area9x9{}, s.NextChangedArea())
 	assert.NoError(t, s.Set(loc, 5))
 	assert.Equal(t, s.NewArea().with(loc, true), s.NextChangedArea())
 
@@ -50,6 +50,7 @@ func TestRemoveOption(t *testing.T) {
 
 func TestMask(t *testing.T) {
 	s := newSudoku[Digits9, Area9x9, grid9x9[Digits9], size9]()
+	s.changeProcessors = append(s.changeProcessors, SolveProcessors[Digits9, Area9x9]{})
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}

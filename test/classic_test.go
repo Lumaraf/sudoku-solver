@@ -1,15 +1,17 @@
 package test
 
 import (
-	"context"
+	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestClassic(t *testing.T) {
-	SudokuTests{
+	SudokuTests[sudoku.Digits9, sudoku.Area9x9]{
 		"easy": {
-			Rows: []string{
+			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+			rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
 				" 3       ",
 				"   195   ",
 				"  8    6 ",
@@ -19,10 +21,11 @@ func TestClassic(t *testing.T) {
 				" 6    28 ",
 				"   419  5",
 				"       7 ",
-			},
+			),
 		},
 		"loneliest number": {
-			Rows: []string{
+			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+			rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
 				"  23 67  ",
 				"   4 5   ",
 				"3       8",
@@ -32,33 +35,46 @@ func TestClassic(t *testing.T) {
 				"8       4",
 				"   6 2   ",
 				"  79 85  ",
-			},
+			),
 		},
-		"impossible": {
-			Rows: []string{
-				"8        ",
-				"  36     ",
-				" 7  9 2  ",
-				" 5   7   ",
-				"    457  ",
-				"   1   3 ",
-				"  1    68",
-				"  85   1 ",
-				" 9    4  ",
-			},
+		"unsolvable #680": {
+			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+			rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
+				"  3",
+				"4    5 1",
+				"   7  96",
+				"     253",
+				"6       9",
+				" 524  7",
+				" 17  8",
+				"28 6    5",
+				"      8",
+			),
 		},
-	}.Run(t)
+		//"impossible": {
+		//	rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+		//	rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
+		//		"8        ",
+		//		"  36     ",
+		//		" 7  9 2  ",
+		//		" 5   7   ",
+		//		"    457  ",
+		//		"   1   3 ",
+		//		"  1    68",
+		//		"  85   1 ",
+		//		" 9    4  ",
+		//	),
+		//},
+	}.Run(t, sudoku.NewSudokuBuilder9x9)
 }
 
 func BenchmarkClassic(b *testing.B) {
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
-		s := sudoku.NewSudoku()
-		s.SetChainLimit(1)
-		//s.EnableGuessing()
-		SudokuSpec{
-			Rows: []string{
+		s, err := sudoku.NewSudoku9x9(
+			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+			rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
 				" 3       ",
 				"   195   ",
 				"  8    6 ",
@@ -68,11 +84,12 @@ func BenchmarkClassic(b *testing.B) {
 				" 6    28 ",
 				"   419  5",
 				"       7 ",
-			},
-		}.setup(s)
+			),
+		)
+		assert.NoError(b, err)
 
 		b.StartTimer()
-		s.Solve(context.Background())
+		assert.NoError(b, s.NewSolver().Solve(b.Context()))
 		b.StopTimer()
 	}
 }

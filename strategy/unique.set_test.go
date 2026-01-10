@@ -5,27 +5,22 @@ import (
 	"testing"
 )
 
-func TestUniqueSetSolver_Solve(t *testing.T) {
-	s := sudoku.NewSudoku()
-	s.Mask(sudoku.CellLocation{0, 0}, sudoku.NewDigits(1, 2, 3))
-	s.Mask(sudoku.CellLocation{0, 1}, sudoku.NewDigits(1, 2, 4))
+func TestUniqueSetStrategy_Solve(t *testing.T) {
+	s, err := sudoku.NewSudoku9x9()
+	if err != nil {
+		t.Fatalf("failed to create sudoku: %v", err)
+	}
+	s.Mask(sudoku.CellLocation{0, 0}, s.NewDigits(1, 2, 3))
+	s.Mask(sudoku.CellLocation{0, 1}, s.NewDigits(1, 2, 4))
 	for n := 2; n < 9; n++ {
-		s.RemoveMask(sudoku.CellLocation{0, n}, sudoku.NewDigits(1, 2))
+		s.RemoveMask(sudoku.CellLocation{0, n}, s.NewDigits(1, 2))
 	}
-	slv := UniqueSetSolver{
-		Cells: []sudoku.CellLocation{
-			{0, 0},
-			{0, 1},
-			{0, 2},
-			{0, 3},
-			{0, 4},
-			{0, 5},
-			{0, 6},
-			{0, 7},
-			{0, 8},
-		},
-		Area: sudoku.Area{},
+	strategy := UniqueSetStrategy[sudoku.Digits9, sudoku.Area9x9]{
+		Area: s.Row(0),
 	}
-	slv.Solve(s)
+	_, err = strategy.Solve(s)
+	if err != nil {
+		t.Errorf("UniqueSetStrategy.Solve failed: %v", err)
+	}
 	s.Print()
 }

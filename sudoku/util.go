@@ -1,25 +1,19 @@
 package sudoku
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 )
 
-func LoadGridFromString[D Digits, A Area](s Sudoku[D, A], grid string) (err error) {
-	rows := strings.Split(grid, "\n")
-	for row, rowContent := range rows {
-		for col, cellContent := range rowContent {
-			if cellContent < '1' || cellContent > '9' {
-				if cellContent != ' ' {
-					err = errors.Join(err, errors.New("invalid cell content"))
-				}
-				continue
-			}
-			err = errors.Join(err, s.Set(CellLocation{row, col}, int(cellContent-'0')))
-		}
-	}
-	return
+func And[BO interface{ and(b BO) BO }](a, b BO) BO {
+	return a.and(b)
+}
+
+func Or[BO interface{ or(b BO) BO }](a, b BO) BO {
+	return a.or(b)
+}
+
+func Not[BO interface{ not() BO }](a BO) BO {
+	return a.not()
 }
 
 func PrintGrid[D Digits, A Area](s Sudoku[D, A]) {
@@ -30,9 +24,12 @@ func PrintGrid[D Digits, A Area](s Sudoku[D, A]) {
 
 	createLine := func(start, edge, fill, boxEdge, end rune) string {
 		line := make([]rune, 0, rowLength)
-		line = append(line, start)
 		for col := 0; col < gridSize; col++ {
-			if col > 0 {
+			if col == 0 {
+				line = append(line, start)
+			} else if col%boxCols == 0 {
+				line = append(line, boxEdge)
+			} else {
 				line = append(line, edge)
 			}
 			for i := 0; i < boxCols*2+1; i++ {
@@ -81,14 +78,14 @@ func PrintGrid[D Digits, A Area](s Sudoku[D, A]) {
 	fmt.Println(bottomLine)
 }
 
-//func GetRestrictions[D Digits, A Area, R Restriction[D, A]](s Sudoku[D, A]) func(yield func(R) bool) {
-//	return func(yield func(R) bool) {
-//		for _, restriction := range s.getRestrictions() {
-//			if r, ok := restriction.(R); ok {
-//				if !yield(r) {
-//					return
-//				}
-//			}
-//		}
-//	}
-//}
+func GetRestrictions[D Digits, A Area, R Restriction[D, A]](s Sudoku[D, A]) func(yield func(R) bool) {
+	return func(yield func(R) bool) {
+		for _, restriction := range s.getRestrictions() {
+			if r, ok := restriction.(R); ok {
+				if !yield(r) {
+					return
+				}
+			}
+		}
+	}
+}

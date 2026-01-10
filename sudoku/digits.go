@@ -5,7 +5,7 @@ import (
 	"math/bits"
 )
 
-//const AllDigits = digits16(0b111111111)
+//const AllDigits = digits_16(0b111111111)
 
 var ErrValueOutOfRange = errors.New("value out of range")
 
@@ -23,32 +23,25 @@ type Digits interface {
 
 type Values func(func(int) bool)
 
-type Digits4 = digits16
-type Digits6 = digits16
-type Digits9 = digits16
-type Digits16 = digits16
+type digits_16 uint16
 
-//type Digits25 = digits32
-
-type digits16 uint16
-
-func (c digits16) CanContain(v int) bool {
+func (c digits_16) CanContain(v int) bool {
 	return uint16(c)&c.getBit(v) != 0
 }
 
-func (c digits16) withOption(v int) digits16 {
-	return c | digits16(c.getBit(v))
+func (c digits_16) withOption(v int) digits_16 {
+	return c | digits_16(c.getBit(v))
 }
 
-func (c digits16) Empty() bool {
+func (c digits_16) Empty() bool {
 	return c == 0
 }
 
-func (c digits16) Count() int {
+func (c digits_16) Count() int {
 	return bits.OnesCount16(uint16(c))
 }
 
-func (c digits16) Single() (v int, isSingle bool) {
+func (c digits_16) Single() (v int, isSingle bool) {
 	isSingle = c.Count() == 1
 	if isSingle {
 		v = bits.TrailingZeros16(uint16(c)) + 1
@@ -56,11 +49,11 @@ func (c digits16) Single() (v int, isSingle bool) {
 	return
 }
 
-func (c digits16) getBit(v int) uint16 {
+func (c digits_16) getBit(v int) uint16 {
 	return 1 << (v - 1)
 }
 
-func (c digits16) Values(yield func(int) bool) {
+func (c digits_16) Values(yield func(int) bool) {
 	mask := uint16(c)
 	for mask != 0 {
 		lz := bits.TrailingZeros16(mask)
@@ -71,10 +64,45 @@ func (c digits16) Values(yield func(int) bool) {
 	}
 }
 
-func (c digits16) Min() int {
+func (c digits_16) Min() int {
 	return bits.TrailingZeros16(uint16(c)) + 1
 }
 
-func (c digits16) Max() int {
+func (c digits_16) Max() int {
 	return 64 - bits.LeadingZeros16(uint16(c))
+}
+
+func (c digits_16) and(d digits_16) digits_16 {
+	return c & d
+}
+func (c digits_16) or(d digits_16) digits_16 {
+	return c | d
+}
+func (c digits_16) not() digits_16 {
+	return ^c
+}
+
+func (c digits_16) String() string {
+	str := ""
+	for i := 1; i <= 16; i++ {
+		if c.CanContain(i) {
+			str += string(rune(i + '0'))
+			str += ","
+		}
+	}
+	return str
+}
+
+type digitsOps_16 struct{}
+
+func (digitsOps_16) IntersectDigits(d1, d2 digits_16) digits_16 {
+	return d1.and(d2)
+}
+
+func (digitsOps_16) UnionDigits(d1 digits_16, d2 digits_16) digits_16 {
+	return d1.or(d2)
+}
+
+func (digitsOps_16) InvertDigits(d digits_16) digits_16 {
+	return d.not()
 }

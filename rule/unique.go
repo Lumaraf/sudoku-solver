@@ -1,40 +1,56 @@
-package restriction
+package rule
 
 import (
+	"errors"
+	"fmt"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-//var (
-//	ErrTooFewDigits = errors.New("too few available digits in unique set")
-//)
+var (
+	ErrTooFewDigits = errors.New("too few available digits in unique set")
+)
 
-func ClassicRestrictions[D sudoku.Digits, A sudoku.Area](sb sudoku.SudokuBuilder[D, A]) error {
+type ClassicRules[D sudoku.Digits, A sudoku.Area] struct{}
+
+func (r ClassicRules[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	for row := 0; row < sb.Size(); row++ {
 		a := sb.Row(row)
-		//sb.AddRestriction(UniqueRestriction[D, A]{
-		//	name: fmt.Sprintf("row %d", row+1),
-		//	area: a,
-		//})
+		sb.AddRestriction(UniqueRestriction[D, A]{
+			name: fmt.Sprintf("row %d", row+1),
+			area: a,
+		})
+		sb.AddValidator(UniqueValidator[D, A]{
+			name: fmt.Sprintf("row %d", row+1),
+			area: a,
+		})
 		for _, cell := range a.Locations {
 			sb.AddExclusionArea(cell, a)
 		}
 	}
 	for col := 0; col < sb.Size(); col++ {
 		a := sb.Column(col)
-		//sb.AddRestriction(UniqueRestriction[D, A]{
-		//	name: fmt.Sprintf("col %d", col+1),
-		//	area: a,
-		//})
+		sb.AddRestriction(UniqueRestriction[D, A]{
+			name: fmt.Sprintf("col %d", col+1),
+			area: a,
+		})
+		sb.AddValidator(UniqueValidator[D, A]{
+			name: fmt.Sprintf("col %d", col+1),
+			area: a,
+		})
 		for _, cell := range a.Locations {
 			sb.AddExclusionArea(cell, a)
 		}
 	}
 	for box := 0; box < sb.Size(); box++ {
 		a := sb.Box(box)
-		//sb.AddRestriction(UniqueRestriction[D, A]{
-		//	name: fmt.Sprintf("box %d", box+1),
-		//	area: a,
-		//})
+		sb.AddRestriction(UniqueRestriction[D, A]{
+			name: fmt.Sprintf("box %d", box+1),
+			area: a,
+		})
+		sb.AddValidator(UniqueValidator[D, A]{
+			name: fmt.Sprintf("box %d", box+1),
+			area: a,
+		})
 		for _, cell := range a.Locations {
 			sb.AddExclusionArea(cell, a)
 		}
@@ -42,20 +58,72 @@ func ClassicRestrictions[D sudoku.Digits, A sudoku.Area](sb sudoku.SudokuBuilder
 	return nil
 }
 
-//type UniqueRestriction[D sudoku.Digits, A sudoku.Area] struct {
-//	name string
-//	area A
-//}
-//
-//func (r UniqueRestriction[D, A]) Name() string {
-//	return "Unique"
-//}
-//
-//func (r UniqueRestriction[D, A]) Area() A {
-//	return r.area
-//}
+type DiagonalRule[D sudoku.Digits, A sudoku.Area] struct{}
 
-//
+func (r DiagonalRule[D, A]) Name() string {
+	return "diagonal"
+}
+
+func (r DiagonalRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
+	falling := sb.NewArea()
+	rising := sb.NewArea()
+	for n := 0; n < sb.Size(); n++ {
+		sb.AreaWith(&falling, sudoku.CellLocation{n, n})
+		sb.AreaWith(&rising, sudoku.CellLocation{sb.Size() - 1 - n, n})
+	}
+	sb.AddRestriction(UniqueRestriction[D, A]{
+		name: "falling diagonal",
+		area: falling,
+	})
+	sb.AddValidator(UniqueValidator[D, A]{
+		name: "falling diagonal",
+		area: falling,
+	})
+	sb.AddRestriction(UniqueRestriction[D, A]{
+		name: "rising diagonal",
+		area: rising,
+	})
+	sb.AddValidator(UniqueValidator[D, A]{
+		name: "rising diagonal",
+		area: rising,
+	})
+	return nil
+}
+
+type UniqueRestriction[D sudoku.Digits, A sudoku.Area] struct {
+	name string
+	area A
+}
+
+func (r UniqueRestriction[D, A]) Name() string {
+	return fmt.Sprintf("Unique %s", r.name)
+}
+
+func (r UniqueRestriction[D, A]) Area() A {
+	return r.area
+}
+
+type UniqueValidator[D sudoku.Digits, A sudoku.Area] struct {
+	name string
+	area A
+}
+
+func (r UniqueValidator[D, A]) Name() string {
+	return fmt.Sprintf("Unique %s", r.name)
+}
+
+func (v UniqueValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
+	mask := s.NewDigits()
+	for _, cell := range v.area.Locations {
+		d := s.Get(cell)
+		mask = s.UnionDigits(mask, d)
+	}
+	if mask.Count() < v.area.Size() {
+		return ErrTooFewDigits
+	}
+	return nil
+}
+
 //func (r UniqueRestriction[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 //	mask := *new(D)
 //	count := 0

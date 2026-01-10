@@ -1,7 +1,6 @@
 package sudoku
 
 import (
-	"context"
 	"errors"
 	"fmt"
 )
@@ -9,12 +8,13 @@ import (
 var mutipleSolutionsError = errors.New("multiple solutions")
 
 type Sudoku[D Digits, A Area] interface {
-	baseSpec
-	digitsSpec[D]
-	areaSpec[A]
+	BaseSpec
+	DigitsSpec[D]
+	AreaSpec[A]
 
-	// SetChainLimit sets the limit for the chain length in solving algorithms.
-	SetChainLimit(limit int)
+	Row(row int) A
+	Column(col int) A
+	Box(box int) A
 
 	// Get retrieves the digits at the specified cell location.
 	Get(l CellLocation) D
@@ -28,7 +28,7 @@ type Sudoku[D Digits, A Area] interface {
 	// Mask restricts the possible digits at the specified cell location.
 	Mask(l CellLocation, d D) error
 
-	// RemoveMask removes the restriction of possible digits at the specified cell location.
+	// RemoveMask removes the rule of possible digits at the specified cell location.
 	RemoveMask(l CellLocation, d D) error
 
 	// RemoveOption removes a specific digit option from the specified cell location.
@@ -61,16 +61,19 @@ type Sudoku[D Digits, A Area] interface {
 	//// Solve attempts to solve the Sudoku puzzle.
 	//Solve(ctx context.Context) error
 
-	// SolveWith attempts to solve the Sudoku puzzle using the provided strategy factories.
-	SolveWith(ctx context.Context, factories ...StrategyFactory[D, A]) error
-
 	// GuessSolutions generates possible solutions by guessing.
 	//GuessSolutions(ctx context.Context, g Guesser[D,A]) func(func(Sudoku[D,A]) bool)
 
 	// IsSolved checks if the Sudoku puzzle is solved.
 	IsSolved() bool
 
-	getRestrictions() []Restriction[D, A]
+	NewSolver() Solver[D, A]
+
+	NewGuesser() Guesser[D, A]
+
+	getRestrictions() []any
+
+	setSolved(l CellLocation)
 }
 
 type CellLocation struct {
@@ -84,18 +87,18 @@ func (l CellLocation) Box() int {
 
 type sudoku[D Digits, A Area, G comparable, S size[D, A, G]] struct {
 	size[D, A, G]
-	grid            G
-	exclusionAreas  [][]A
-	restrictions    []Restriction[D, A]
-	validators      []Validator[D, A]
-	solveProcessors []SolveProcessor[D, A]
-	findAllOptions  bool
-	chainLimit      int
-	changed         A
-	nextChanged     A
-	solved          A
-	stats           Stats
-	logger          Logger[D]
+	grid             G
+	exclusionAreas   [][]A
+	restrictions     []any
+	validators       []Validator[D, A]
+	changeProcessors []ChangeProcessor[D, A]
+	findAllOptions   bool
+	chainLimit       int
+	changed          A
+	nextChanged      A
+	solved           A
+	stats            Stats
+	logger           Logger[D]
 }
 
 type Stats struct {
@@ -105,16 +108,6 @@ type Stats struct {
 	ExclusionChainRuns int
 	GuesserRuns        int
 	GuessMisses        int
-}
-
-func NewSudoku9x9(factories ...RestrictionFactory[Digits9, Area9x9]) (Sudoku[Digits9, Area9x9], error) {
-	builder := NewSudokuBuilder9x9()
-	for _, factory := range factories {
-		if err := builder.AddRestrictionFactory(factory); err != nil {
-			return nil, err
-		}
-	}
-	return builder.Build(), nil
 }
 
 func newSudoku[D Digits, A Area, G comparable, S size[D, A, G]]() *sudoku[D, A, G, S] {
@@ -136,8 +129,31 @@ func newSudoku[D Digits, A Area, G comparable, S size[D, A, G]]() *sudoku[D, A, 
 	return &s
 }
 
-func (s *sudoku[D, A, G, S]) SetChainLimit(limit int) {
-	s.chainLimit = limit
+func (s *sudoku[D, A, G, S]) Row(row int) (a A) {
+	for col := 0; col < s.Size(); col++ {
+		s.AreaWith(&a, CellLocation{row, col})
+	}
+	return
+}
+
+func (s *sudoku[D, A, G, S]) Column(col int) (a A) {
+	for row := 0; row < s.Size(); row++ {
+		s.AreaWith(&a, CellLocation{row, col})
+	}
+	return
+}
+
+func (s *sudoku[D, A, G, S]) Box(box int) (a A) {
+	boxRows, boxCols := s.BoxSize()
+	boxesPerCol := s.Size() / boxCols
+	rowOffset := (box / boxesPerCol) * boxRows
+	colOffset := (box % boxesPerCol) * boxCols
+	for row := 0; row < boxRows; row++ {
+		for col := 0; col < boxCols; col++ {
+			s.AreaWith(&a, CellLocation{rowOffset + row, colOffset + col})
+		}
+	}
+	return
 }
 
 func (s *sudoku[D, A, G, S]) Get(l CellLocation) D {
@@ -159,7 +175,7 @@ func (s *sudoku[D, A, G, S]) Set(l CellLocation, v int) error {
 		oldCell := *cell
 		*cell = s.NewDigits(v)
 		s.logger.UpdateCell(l, oldCell, *cell)
-		return s.processSolve(l, *cell)
+		return s.processChange(l, *cell)
 	}
 	return nil
 }
@@ -183,9 +199,7 @@ func (s *sudoku[D, A, G, S]) Mask(l CellLocation, d D) error {
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
-		if (*target).Count() == 1 {
-			return s.processSolve(l, newDigits)
-		}
+		return s.processChange(l, newDigits)
 	}
 	return nil
 }
@@ -203,9 +217,7 @@ func (s *sudoku[D, A, G, S]) RemoveMask(l CellLocation, d D) error {
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
-		if (*target).Count() == 1 {
-			return s.processSolve(l, *target)
-		}
+		return s.processChange(l, newDigits)
 	}
 	return nil
 }
@@ -260,15 +272,18 @@ func (s *sudoku[D, A, G, S]) SetLogger(logger Logger[D]) {
 
 func (s *sudoku[D, A, G, S]) Print() error {
 	count := 0
-	for row := 0; row < 9; row++ {
-		for col := 0; col < 9; col++ {
+	for row := 0; row < s.Size(); row++ {
+		for col := 0; col < s.Size(); col++ {
 			d := s.GridCell(&s.grid, row, col)
 			count += (*d).Count()
 		}
 	}
 
+	size := s.Size()
+	cells := size * size
+
 	PrintGrid[D, A](s)
-	fmt.Printf("%.2f%% solved\n", (1-float64(count-81)/(81*8))*100)
+	fmt.Printf("%.2f%% solved\n", (1-float64(count-cells)/float64(cells*(size-1)))*100)
 	fmt.Println(s.Stats())
 	return nil
 }
@@ -277,6 +292,6 @@ func (s *sudoku[D, A, G, S]) Stats() Stats {
 	return s.stats
 }
 
-func (s *sudoku[D, A, G, S]) getRestrictions() []Restriction[D, A] {
+func (s *sudoku[D, A, G, S]) getRestrictions() []any {
 	return s.restrictions
 }

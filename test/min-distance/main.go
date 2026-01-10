@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	restriction2 "github.com/lumaraf/sudoku-solver/extra/restriction"
-	"github.com/lumaraf/sudoku-solver/restriction"
+	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
 func main() {
 	s := sudoku.NewSudoku()
-	restriction.AddClassicRestrictions(s)
+	rule.AddClassicRestrictions(s)
 
 	//masks := map[int]sudoku.Digits{}
 	//for n := 1; n <= 9; n++ {
@@ -29,12 +29,12 @@ func main() {
 	//	{0, -1},
 	//	{0, 1},
 	//}
-	//offsets = append(offsets, restriction.KnightsMove...)
-	//s.AddRestriction(restriction.AntiRelationRestriction{
+	//offsets = append(offsets, rule.KnightsMove...)
+	//s.AddRestriction(rule.AntiRelationRestriction{
 	//	Offsets: offsets,
 	//	Masks:   masks,
 	//})
-	//restriction.AddAntiKingRestriction(s)
+	//rule.AddAntiKingRestriction(s)
 	for n := 2; n <= 6; n++ {
 		restriction2.AddKillerCageRestriction(
 			s,

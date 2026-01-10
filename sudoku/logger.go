@@ -50,8 +50,8 @@ func (l *consoleLogger[D]) UpdateCell(loc CellLocation, before, after D) {
 		l.printf("solved cell %v to %v", loc, v)
 	} else {
 		//removed := before &^ after
-		removed := new(D)
-		l.printf("removed candidates %s for cell %v", removed, loc)
+		//removed := new(D)
+		l.printf("removed candidates for cell %v: %s > %s", loc, before, after)
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	restriction2 "github.com/lumaraf/sudoku-solver/extra/restriction"
-	"github.com/lumaraf/sudoku-solver/restriction"
+	"github.com/lumaraf/sudoku-solver/rule"
 	_ "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
@@ -50,7 +50,7 @@ import (
 func main() {
 	s := sudoku.NewSudoku()
 	s.SetChainLimit(3)
-	restriction.AddClassicRestrictions(s)
+	rule.AddClassicRestrictions(s)
 	restriction2.AddNonConsecutiveRestriction(s)
 	s.AddRestriction(restriction2.AntiRelationRestriction{
 		Offsets: sudoku.Offsets{

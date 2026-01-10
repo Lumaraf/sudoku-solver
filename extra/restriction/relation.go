@@ -29,7 +29,7 @@ outer:
 				continue outer
 			}
 		}
-		return errors.New("Relation restriction is not satisfied")
+		return errors.New("Relation rule is not satisfied")
 	}
 	return nil
 }

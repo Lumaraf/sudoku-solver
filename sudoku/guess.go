@@ -1,98 +1,116 @@
 package sudoku
 
-//type Guesser func(s Sudoku) (CellLocation, Values)
-//
-//func DefaultGuesser(s Sudoku) (CellLocation, Values) {
-//	bestCell := CellLocation{}
-//	bestDigits := Digits(0)
-//	for _, cell := range s.SolvedArea().Not().Locations {
-//		d := s.Get(cell)
-//		if d.Count() == 1 {
-//			continue
-//		}
-//		if bestDigits.Count() == 0 || d.Count() < bestDigits.Count() {
-//			bestCell = cell
-//			bestDigits = d
-//		}
-//	}
-//	return bestCell, bestDigits.Values
-//}
+import (
+	"context"
+	"errors"
+)
 
-//func (s *sudoku) GuessSolutions(ctx context.Context, g Guesser) func(func(Sudoku) bool) {
-//	return s.GuessSolutionsWith(ctx, g, defaultSolverFactories...)
-//}
-//
-//func (s *sudoku) GuessSolutionsWith(ctx context.Context, guesser Guesser, factories ...StrategyFactory) func(func(Sudoku) bool) {
-//	return func(yield func(Sudoku) bool) {
-//		solvers := s.createSolvers(factories)
-//
-//		var err error
-//		solvers, err = s.solve(solvers, ctx)
-//		if err != nil {
-//			return
-//		}
-//		if s.IsSolved() {
-//			yield(s)
-//			return
-//		}
-//
-//		if guesser == nil {
-//			guesser = DefaultGuesser
-//		}
-//
-//		for s := range s.guessSolutions(solvers, guesser, make([]CellLocation, 0, 81), ctx) {
-//			if !yield(&s) {
-//				return
-//			}
-//		}
-//	}
-//}
-//
-//func (s *sudoku) guessSolutions(solvers []Strategy, guesser Guesser, path []CellLocation, ctx context.Context) func(yield func(sudoku) bool) {
-//	s.stats.GuesserRuns++
-//	return func(yield func(sudoku) bool) {
-//		baseClone := *s
-//		baseClone.logger = voidLogger{}
-//
-//		cell, values := guesser(&baseClone)
-//
-//		guessPath := append(path, cell)
-//		for v := range values {
-//			clone := baseClone
-//
-//			if clone.Set(cell, v) != nil {
-//				continue
-//			}
-//
-//			if clone.Validate() != nil {
-//				continue
-//			}
-//
-//			nextSolvers, err := clone.solve(solvers, ctx)
-//			if err != nil {
-//				if errors.Is(err, context.DeadlineExceeded) {
-//					return
-//				}
-//				continue
-//			}
-//
-//			if clone.IsSolved() {
-//				if !yield(clone) {
-//					return
-//				}
-//			} else {
-//				solutionCount := 0
-//				for solution := range clone.guessSolutions(nextSolvers, guesser, guessPath, ctx) {
-//					solutionCount++
-//					if !yield(solution) {
-//						return
-//					}
-//				}
-//				if solutionCount == 0 {
-//					s.stats.GuessMisses++
-//					_ = s.RemoveOption(cell, v)
-//				}
-//			}
-//		}
-//	}
-//}
+type GuessSelector[D Digits, A Area] func(s Sudoku[D, A]) (CellLocation, Values)
+
+func DefaultGuessSelector[D Digits, A Area](s Sudoku[D, A]) (CellLocation, Values) {
+	bestCell := CellLocation{}
+	bestDigits := s.NewDigits()
+	for _, cell := range s.InvertArea(s.SolvedArea()).Locations {
+		d := s.Get(cell)
+		if d.Count() == 1 {
+			continue
+		}
+		if bestDigits.Count() == 0 || d.Count() < bestDigits.Count() {
+			bestCell = cell
+			bestDigits = d
+		}
+	}
+	return bestCell, bestDigits.Values
+}
+
+type Guesser[D Digits, A Area] interface {
+	Solver[D, A]
+	Guess(g GuessSelector[D, A], ctx context.Context) func(func(Sudoku[D, A]) bool)
+}
+
+type guesser[D Digits, A Area, G comparable, S size[D, A, G]] struct {
+	*solver[D, A, G, S]
+}
+
+func (g *guesser[D, A, G, S]) Guess(gs GuessSelector[D, A], ctx context.Context) func(func(Sudoku[D, A]) bool) {
+	return func(yield func(Sudoku[D, A]) bool) {
+		strategies := g.createStrategies()
+
+		var err error
+		strategies, err = g.solve(g.sudoku, strategies, ctx)
+		if err != nil {
+			return
+		}
+		if g.sudoku.IsSolved() {
+			yield(g.sudoku)
+			return
+		}
+
+		if gs == nil {
+			gs = DefaultGuessSelector
+		}
+
+		for s := range g.guessSolutions(g.sudoku, strategies, gs, make([]CellLocation, 0, g.sudoku.Size()*g.sudoku.Size()), ctx) {
+			if !yield(&s) {
+				return
+			}
+		}
+	}
+}
+
+func (g *guesser[D, A, G, S]) guessSolutions(s *sudoku[D, A, G, S], solvers []Strategy[D, A], gs GuessSelector[D, A], path []CellLocation, ctx context.Context) func(yield func(sudoku[D, A, G, S]) bool) {
+	g.sudoku.stats.GuesserRuns++
+	return func(yield func(sudoku[D, A, G, S]) bool) {
+		baseClone := *s
+		baseClone.logger = voidLogger[D]{}
+
+		cell, values := gs(&baseClone)
+
+		guessPath := append(path, cell)
+		for v := range values {
+			clone := baseClone
+
+			if clone.Set(cell, v) != nil {
+				continue
+			}
+
+			if clone.Validate() != nil {
+				continue
+			}
+
+			nextSolvers, err := g.solve(&clone, solvers, ctx)
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					return
+				}
+				continue
+			}
+
+			if clone.IsSolved() {
+				if !yield(clone) {
+					return
+				}
+			} else {
+				solutionCount := 0
+				for solution := range g.guessSolutions(&clone, nextSolvers, gs, guessPath, ctx) {
+					solutionCount++
+					if !yield(solution) {
+						return
+					}
+				}
+				if solutionCount == 0 {
+					s.stats.GuessMisses++
+					_ = s.RemoveOption(cell, v)
+				}
+			}
+		}
+	}
+}
+
+func (s *sudoku[D, A, G, S]) NewGuesser() Guesser[D, A] {
+	return &guesser[D, A, G, S]{
+		solver: &solver[D, A, G, S]{
+			sudoku: s,
+		},
+	}
+}

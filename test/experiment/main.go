@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lumaraf/sudoku-solver/restriction"
+	"github.com/lumaraf/sudoku-solver/rule"
 	_ "github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 	"math"
@@ -12,9 +12,9 @@ import (
 func main() {
 	s := sudoku.NewSudoku()
 	s.SetChainLimit(0)
-	restriction.AddClassicRestrictions(s)
-	//// anti xv restriction
-	//s.AddRestriction(restriction.AntiRelationRestriction{
+	rule.AddClassicRestrictions(s)
+	//// anti xv rule
+	//s.AddRestriction(rule.AntiRelationRestriction{
 	//	Offsets: sudoku.Offsets{
 	//		{Row: 0, Col: -1},
 	//		{Row: -1, Col: 0},
@@ -32,7 +32,7 @@ func main() {
 	//		9: sudoku.NewDigits(1),
 	//	},
 	//})
-	//restriction.AddNonConsecutiveRestriction(s)
+	//rule.AddNonConsecutiveRestriction(s)
 
 	offsets := sudoku.Offsets{
 		{Row: 0, Col: -1},

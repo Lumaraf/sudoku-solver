@@ -2,7 +2,7 @@ package restriction
 
 import (
 	"errors"
-	restriction2 "github.com/lumaraf/sudoku-solver/restriction"
+	restriction2 "github.com/lumaraf/sudoku-solver/rule"
 
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )

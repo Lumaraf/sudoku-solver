@@ -3,61 +3,109 @@ package sudoku
 import (
 	"context"
 	"fmt"
+	"sort"
 )
 
-type Restriction[D Digits, A Area] interface {
-	Name() string
-}
+type Difficulty uint
+
+const (
+	DIFFICULTY_EASY Difficulty = iota
+	DIFFICULTY_NORMAL
+	DIFFICULTY_HARD
+	DIFFICULTY_IMPOSSIBLE
+)
 
 type Strategy[D Digits, A Area] interface {
 	Name() string
+	Difficulty() Difficulty
 	Solve(s Sudoku[D, A]) ([]Strategy[D, A], error)
 	AreaFilter() A
 }
 
-type SolveProcessor[D Digits, A Area] interface {
-	Name() string
-	ProcessSolve(s Sudoku[D, A], cell CellLocation) error
+type Strategies[D Digits, A Area] []Strategy[D, A]
+
+func (s Strategies[D, A]) Len() int {
+	return len(s)
 }
 
-type StrategyFactory[D Digits, A Area] = func(s Sudoku[D, A]) []Strategy[D, A]
-
-func (s *sudoku[D, A, G, S]) IsSolved() bool {
-	return s.solved.Size() == 81
+func (s Strategies[D, A]) Less(i, j int) bool {
+	return s[i].Difficulty() < s[j].Difficulty()
 }
 
-func (s *sudoku[D, A, G, S]) SolveWith(ctx context.Context, factories ...StrategyFactory[D, A]) error {
-	_, err := s.solve(s.createSolvers(factories), ctx)
+func (s Strategies[D, A]) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+type StrategyFactory[D Digits, A Area] interface {
+	For(s Sudoku[D, A]) []Strategy[D, A]
+}
+
+type StrategyFactoryFunc[D Digits, A Area] func(s Sudoku[D, A]) []Strategy[D, A]
+
+func (sff StrategyFactoryFunc[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
+	return sff(s)
+}
+
+type StrategyFactories[D Digits, A Area] []StrategyFactory[D, A]
+
+func (sf StrategyFactories[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
+	strategies := make([]Strategy[D, A], 0, len(sf))
+	for _, factory := range sf {
+		strategies = append(strategies, factory.For(s)...)
+	}
+	return strategies
+}
+
+type Solver[D Digits, A Area] interface {
+	SetChainLimit(limit int)
+	Use(factories ...StrategyFactory[D, A])
+	Solve(ctx context.Context) error
+}
+
+type solver[D Digits, A Area, G comparable, S size[D, A, G]] struct {
+	sudoku            *sudoku[D, A, G, S]
+	chainLimit        int
+	strategyFactories []StrategyFactory[D, A]
+}
+
+func (slv *solver[D, A, G, S]) SetChainLimit(limit int) {
+	slv.chainLimit = limit
+}
+
+func (slv *solver[D, A, G, S]) Use(factories ...StrategyFactory[D, A]) {
+	slv.strategyFactories = append(slv.strategyFactories, factories...)
+}
+
+func (slv *solver[D, A, G, S]) Solve(ctx context.Context) error {
+	_, err := slv.solve(slv.sudoku, slv.createStrategies(), ctx)
 	return err
 }
 
-func (s *sudoku[D, A, G, S]) createSolvers(factories []StrategyFactory[D, A]) []Strategy[D, A] {
-	restrictions := make([]Restriction[D, A], 0, len(s.restrictions))
-	restrictions = append(restrictions, s.restrictions...)
-
-	solvers := make([]Strategy[D, A], 0, len(restrictions))
-	for _, factory := range factories {
-		solvers = append(solvers, factory(s)...)
+func (slv *solver[D, A, G, S]) createStrategies() Strategies[D, A] {
+	strategies := make(Strategies[D, A], 0, len(slv.strategyFactories))
+	for _, factory := range slv.strategyFactories {
+		strategies = append(strategies, factory.For(slv.sudoku)...)
 	}
-	return solvers
+	sort.Sort(strategies)
+	return strategies
 }
 
-func (s *sudoku[D, A, G, S]) solve(solvers []Strategy[D, A], ctx context.Context) ([]Strategy[D, A], error) {
+func (slv *solver[D, A, G, S]) solve(s *sudoku[D, A, G, S], solvers []Strategy[D, A], ctx context.Context) ([]Strategy[D, A], error) {
 	for !s.IsSolved() {
 		if err := ctx.Err(); err != nil {
 			return solvers, err
 		}
 
 		var err error
-		solvers, err = s.runSolvers(solvers)
+		solvers, err = slv.runSolvers(s, solvers)
 		if err != nil {
 			return solvers, err
 		}
 
-		if s.nextChanged.Empty() && s.chainLimit > 0 {
+		if s.nextChanged.Empty() && slv.chainLimit > 0 {
 			s.stats.ExclusionChainRuns++
-			for limit := 1; limit <= s.chainLimit; limit++ {
-				if err := s.solveExclusionChain(s.InvertArea(s.solved), limit); err != nil {
+			for limit := 1; limit <= slv.chainLimit; limit++ {
+				if err := slv.solveExclusionChain(s, s.InvertArea(s.solved), limit); err != nil {
 					return solvers, err
 				}
 				if !s.nextChanged.Empty() {
@@ -73,17 +121,24 @@ func (s *sudoku[D, A, G, S]) solve(solvers []Strategy[D, A], ctx context.Context
 	return solvers, s.Validate()
 }
 
-func (s *sudoku[D, A, G, S]) runSolvers(solvers []Strategy[D, A]) ([]Strategy[D, A], error) {
+func (slv *solver[D, A, G, S]) runSolvers(s *sudoku[D, A, G, S], strategies []Strategy[D, A]) ([]Strategy[D, A], error) {
 	s.changed = s.nextChanged
 	s.nextChanged = *new(A)
 
-	newSolvers := make([]Strategy[D, A], 0, len(solvers)*2)
-	for _, slv := range solvers {
-		if !s.IntersectAreas(slv.AreaFilter(), s.changed).Empty() {
+	var lastDifficulty Difficulty
+	newSolvers := make([]Strategy[D, A], 0, len(strategies)*2)
+	for n, strategy := range strategies {
+		if strategy.Difficulty() > lastDifficulty && !s.nextChanged.Empty() {
+			newSolvers = append(newSolvers, strategies[n:]...)
+			break
+		}
+		lastDifficulty = strategy.Difficulty()
+
+		if !s.IntersectAreas(strategy.AreaFilter(), s.changed).Empty() {
 			s.stats.SolverRuns++
 			cellUpdatesBefore := s.stats.CellUpdates
-			s.logger.EnterContext(slv)
-			s2, err := slv.Solve(s)
+			s.logger.EnterContext(strategy)
+			s2, err := strategy.Solve(s)
 			s.logger.ExitContext()
 			if err != nil {
 				return nil, err
@@ -93,7 +148,7 @@ func (s *sudoku[D, A, G, S]) runSolvers(solvers []Strategy[D, A]) ([]Strategy[D,
 			}
 			newSolvers = append(newSolvers, s2...)
 		} else {
-			newSolvers = append(newSolvers, slv)
+			newSolvers = append(newSolvers, strategy)
 		}
 	}
 	return newSolvers, nil
@@ -104,7 +159,7 @@ type ExclusionChainError struct {
 	errors [9]error
 }
 
-func (s *sudoku[D, A, G, S]) solveExclusionChain(area Area, levels int) error {
+func (slv *solver[D, A, G, S]) solveExclusionChain(s *sudoku[D, A, G, S], area A, levels int) error {
 	s.logger.EnterContext(StringContext("solveExclusionChain"))
 	defer s.logger.ExitContext()
 
@@ -120,7 +175,7 @@ func (s *sudoku[D, A, G, S]) solveExclusionChain(area Area, levels int) error {
 				err = clone.Validate()
 			}
 			if err == nil && levels > 1 {
-				err = clone.solveExclusionChain(s.IntersectAreas(clone.nextChanged, s.InvertArea(clone.solved)), levels-1)
+				err = slv.solveExclusionChain(&clone, s.IntersectAreas(clone.nextChanged, s.InvertArea(clone.solved)), levels-1)
 			}
 
 			if err != nil {
@@ -138,21 +193,27 @@ func (s *sudoku[D, A, G, S]) solveExclusionChain(area Area, levels int) error {
 	return nil
 }
 
-var processSolveContext = StringContext("processSolve")
+func (s *sudoku[D, A, G, S]) setSolved(l CellLocation) {
+	s.AreaWith(&s.solved, l)
+}
 
-func (s *sudoku[D, A, G, S]) processSolve(l CellLocation, mask D) error {
-	s.logger.EnterContext(processSolveContext)
+func (s *sudoku[D, A, G, S]) IsSolved() bool {
+	return s.solved.Size() == s.Size()*s.Size()
+}
+
+func (s *sudoku[D, A, G, S]) NewSolver() Solver[D, A] {
+	return &solver[D, A, G, S]{sudoku: s}
+}
+
+var processChangeContext = StringContext("processChange")
+
+func (s *sudoku[D, A, G, S]) processChange(l CellLocation, mask D) error {
+	s.logger.EnterContext(processChangeContext)
 	defer s.logger.ExitContext()
 
-	s.AreaWith(&s.solved, l)
-	for _, cell := range s.exclusionAreas[l.Row][l.Col].Locations {
-		if err := s.RemoveMask(cell, mask); err != nil {
-			return err
-		}
-	}
-	for _, sp := range s.solveProcessors {
-		s.logger.EnterContext(sp)
-		if err := sp.ProcessSolve(s, l); err != nil {
+	for _, cp := range s.changeProcessors {
+		s.logger.EnterContext(cp)
+		if err := cp.ProcessChange(s, l, mask); err != nil {
 			return err
 		}
 		s.logger.ExitContext()

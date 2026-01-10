@@ -1,23 +1,52 @@
 package strategy
 
 import (
-	"github.com/lumaraf/sudoku-solver/restriction"
+	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-type XWingSolver struct {
+func XWingStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+	areas := make(map[A]bool, s.Size()*2)
+	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
+		areas[r.Area()] = true
+	}
+	rows := make([]int, 0, s.Size())
+	cols := make([]int, 0, s.Size())
+	for i := 0; i < s.Size(); i++ {
+		if areas[s.Row(i)] {
+			rows = append(rows, i)
+		}
+		if areas[s.Column(i)] {
+			cols = append(cols, i)
+		}
+	}
+	if len(rows) > 1 || len(cols) > 1 {
+		return []sudoku.Strategy[D, A]{XWingStrategy[D, A]{
+			rows: rows,
+			cols: cols,
+		}}
+	}
+	return nil
+}
+
+type XWingStrategy[D sudoku.Digits, A sudoku.Area] struct {
+	area A
 	rows []int
 	cols []int
 }
 
-func (slv XWingSolver) Name() string {
-	return "XWingSolver"
+func (slv XWingStrategy[D, A]) Name() string {
+	return "XWingStrategy"
 }
 
-func (slv XWingSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
+func (st XWingStrategy[D, A]) Difficulty() sudoku.Difficulty {
+	return sudoku.DIFFICULTY_HARD
+}
+
+func (slv XWingStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
 	rows := make([]int, 0, len(slv.rows))
 	for _, row := range slv.rows {
-		if !sudoku.RowArea(row).And(s.SolvedArea().Not()).Empty() {
+		if !s.IntersectAreas(s.Row(row), s.InvertArea(s.SolvedArea())).Empty() {
 			rows = append(rows, row)
 		}
 	}
@@ -25,7 +54,7 @@ func (slv XWingSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 
 	cols := make([]int, 0, len(slv.cols))
 	for _, col := range slv.cols {
-		if !sudoku.ColArea(col).And(s.SolvedArea().Not()).Empty() {
+		if !s.IntersectAreas(s.Column(col), s.InvertArea(s.SolvedArea())).Empty() {
 			cols = append(cols, col)
 		}
 	}
@@ -38,10 +67,10 @@ func (slv XWingSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 	for digit := 1; digit <= 9; digit++ {
 		slv.findXWing(s, digit)
 	}
-	return []sudoku.Strategy{slv}, nil
+	return []sudoku.Strategy[D, A]{slv}, nil
 }
 
-func (slv XWingSolver) findXWing(s sudoku.Sudoku, digit int) bool {
+func (slv XWingStrategy[D, A]) findXWing(s sudoku.Sudoku[D, A], digit int) bool {
 	// Check rows for X-Wing pattern
 	for row1 := range slv.rows[:len(slv.rows)-1] {
 		cols1 := slv.findCandidateCols(s, slv.rows[row1], digit)
@@ -77,9 +106,9 @@ func (slv XWingSolver) findXWing(s sudoku.Sudoku, digit int) bool {
 	return false
 }
 
-func (slv XWingSolver) findCandidateCols(s sudoku.Sudoku, row, digit int) []int {
+func (slv XWingStrategy[D, A]) findCandidateCols(s sudoku.Sudoku[D, A], row, digit int) []int {
 	cols := make([]int, 0, 2)
-	for _, l := range sudoku.RowArea(row).And(s.SolvedArea().Not()).Locations {
+	for _, l := range s.InvertArea(s.IntersectAreas(s.Row(row), s.Column(digit))).Locations {
 		if s.Get(l).CanContain(digit) {
 			cols = append(cols, l.Col)
 		}
@@ -87,9 +116,9 @@ func (slv XWingSolver) findCandidateCols(s sudoku.Sudoku, row, digit int) []int 
 	return cols
 }
 
-func (slv XWingSolver) findCandidateRows(s sudoku.Sudoku, col, digit int) []int {
+func (slv XWingStrategy[D, A]) findCandidateRows(s sudoku.Sudoku[D, A], col, digit int) []int {
 	rows := make([]int, 0, 2)
-	for _, l := range sudoku.ColArea(col).And(s.SolvedArea().Not()).Locations {
+	for _, l := range s.InvertArea(s.IntersectAreas(s.Column(col), s.SolvedArea())).Locations {
 		if s.Get(l).CanContain(digit) {
 			rows = append(rows, l.Row)
 		}
@@ -97,9 +126,9 @@ func (slv XWingSolver) findCandidateRows(s sudoku.Sudoku, col, digit int) []int 
 	return rows
 }
 
-func (slv XWingSolver) eliminateInCols(s sudoku.Sudoku, cols []int, row1, row2, digit int) bool {
+func (slv XWingStrategy[D, A]) eliminateInCols(s sudoku.Sudoku[D, A], cols []int, row1, row2, digit int) bool {
 	changed := false
-	for row := 0; row < 9; row++ {
+	for row := 0; row < s.Size(); row++ {
 		if row == row1 || row == row2 {
 			continue
 		}
@@ -114,9 +143,9 @@ func (slv XWingSolver) eliminateInCols(s sudoku.Sudoku, cols []int, row1, row2, 
 	return changed
 }
 
-func (slv XWingSolver) eliminateInRows(s sudoku.Sudoku, rows []int, col1, col2, digit int) bool {
+func (slv XWingStrategy[D, A]) eliminateInRows(s sudoku.Sudoku[D, A], rows []int, col1, col2, digit int) bool {
 	changed := false
-	for col := 0; col < 9; col++ {
+	for col := 0; col < s.Size(); col++ {
 		if col == col1 || col == col2 {
 			continue
 		}
@@ -131,32 +160,6 @@ func (slv XWingSolver) eliminateInRows(s sudoku.Sudoku, rows []int, col1, col2, 
 	return changed
 }
 
-func (slv XWingSolver) AreaFilter() sudoku.Area {
-	return sudoku.Area{}.Not()
-}
-
-func XWingSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
-	areas := make(map[sudoku.Area]bool, 18)
-	for _, r := range restrictions {
-		if unique, ok := r.(restriction.UniqueRestriction); ok {
-			areas[unique.Area()] = true
-		}
-	}
-	rows := make([]int, 0, 9)
-	cols := make([]int, 0, 9)
-	for i := 0; i < 9; i++ {
-		if areas[sudoku.RowArea(i)] {
-			rows = append(rows, i)
-		}
-		if areas[sudoku.ColArea(i)] {
-			cols = append(cols, i)
-		}
-	}
-	if len(rows) > 1 || len(cols) > 1 {
-		return []sudoku.Strategy{XWingSolver{
-			rows: rows,
-			cols: cols,
-		}}
-	}
-	return nil
+func (slv XWingStrategy[D, A]) AreaFilter() A {
+	return slv.area
 }

@@ -1,25 +1,34 @@
 package strategy
 
-import (
-	//strategy2 "github.com/lumaraf/sudoku-solver/extra/strategy"
-	"github.com/lumaraf/sudoku-solver/sudoku"
-)
+import "github.com/lumaraf/sudoku-solver/sudoku"
 
-func init() {
-	// classic/general solvers
-	sudoku.RegisterStrategyFactory(UniqueSetSolverFactory)
-	sudoku.RegisterStrategyFactory(UniqueExclusionSolverFactory)
-	sudoku.RegisterStrategyFactory(UniqueIntersectionSolverFactory)
-	//sudoku.RegisterStrategyFactory(XWingSolverFactory)
-	//sudoku.RegisterStrategyFactory(SwordfishSolverFactory)
+// AllStrategies returns all available strategies used by the solver.
+// Each strategy is documented directly above its registration for clarity.
+func AllStrategies[D sudoku.Digits, A sudoku.Area]() sudoku.StrategyFactories[D, A] {
+	return sudoku.StrategyFactories[D, A]{
+		// UniqueSetStrategy:
+		// Detects sets of cells within a unit (row, column or box) that contain exactly N candidates among N cells.
+		// Removes these candidates from all other cells in the same unit. This is commonly known as the "naked set" technique.
+		sudoku.StrategyFactoryFunc[D, A](UniqueSetStrategyFactory[D, A]),
 
-	// special rule solvers
-	//sudoku.RegisterStrategyFactory(strategy2.EqualSolverFactory)
-	//sudoku.RegisterStrategyFactory(strategy2.IncreaseSolverFactory)
-	//sudoku.RegisterStrategyFactory(strategy2.SandwichSolverFactory)
-	//sudoku.RegisterStrategyFactory(strategy2.AreaSumSolverFactory)
-	//sudoku.RegisterStrategyFactory(strategy2.KillerCageSolverFactory)
+		// UniqueIntersectionStrategy:
+		// Identifies intersections between units (e.g. row and box) where candidates are restricted to a shared subset of cells.
+		// Eliminates these candidates from other cells in the intersecting unit. This is also called "pointing pairs/triples" or "box-line reduction".
+		sudoku.StrategyFactoryFunc[D, A](UniqueIntersectionStrategyFactory[D, A]),
 
-	// expensive solvers
-	sudoku.RegisterStrategyFactory(LogicChainSolverFactory)
+		// LogicChainStrategy:
+		// Uses chains of logical implications to deduce eliminations. It simulates placing a candidate and follows the consequences,
+		// ruling out candidates that would lead to contradictions. This covers techniques like "simple coloring" and "forcing chains".
+		sudoku.StrategyFactoryFunc[D, A](LogicChainStrategyFactory[D, A]),
+
+		// XWingStrategy:
+		// Searches for the X-Wing pattern: a candidate appears exactly twice in two different rows and the same columns (or vice versa).
+		// This allows elimination of the candidate from other cells in those columns/rows.
+		sudoku.StrategyFactoryFunc[D, A](XWingStrategyFactory[D, A]),
+
+		// UniqueExclusionStrategy:
+		// Examines all possible placements of a candidate in a unit and excludes candidates that cannot appear in any valid solution.
+		// This is related to "hidden singles" and advanced exclusion logic.
+		sudoku.StrategyFactoryFunc[D, A](UniqueExclusionStrategyFactory[D, A]),
+	}
 }

@@ -4,23 +4,35 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-type LogicChainSolver struct {
+// checks if values in a cell would break a rule
+func LogicChainStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+	return []sudoku.Strategy[D, A]{LogicChainStrategy[D, A]{
+		s.InvertArea(s.NewArea()),
+	}}
 }
 
-func (slv LogicChainSolver) Name() string {
-	return "LogicChainSolver"
+type LogicChainStrategy[D sudoku.Digits, A sudoku.Area] struct {
+	area A
 }
 
-func (slv LogicChainSolver) AreaFilter() sudoku.Area {
-	return sudoku.Area{}.Not()
+func (slv LogicChainStrategy[D, A]) Name() string {
+	return "LogicChainStrategy"
 }
 
-func (slv LogicChainSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
+func (slv LogicChainStrategy[D, A]) Difficulty() sudoku.Difficulty {
+	return sudoku.DIFFICULTY_NORMAL
+}
+
+func (slv LogicChainStrategy[D, A]) AreaFilter() A {
+	return slv.area
+}
+
+func (slv LogicChainStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
 	for _, cell := range s.ChangedArea().Locations {
 		d := s.Get(cell)
-		if d.Count() == 2 {
+		if d.Count() >= 2 {
 			for v := range d.Values {
-				err := s.Try(func(s sudoku.Sudoku) error {
+				err := s.Try(func(s sudoku.Sudoku[D, A]) error {
 					err := s.Set(cell, v)
 					if err == nil {
 						err = s.Validate()
@@ -36,9 +48,5 @@ func (slv LogicChainSolver) Solve(s sudoku.Sudoku) ([]sudoku.Strategy, error) {
 			}
 		}
 	}
-	return []sudoku.Strategy{slv}, nil
-}
-
-func LogicChainSolverFactory(restrictions []sudoku.Restriction) []sudoku.Strategy {
-	return []sudoku.Strategy{LogicChainSolver{}}
+	return []sudoku.Strategy[D, A]{slv}, nil
 }
