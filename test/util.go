@@ -23,14 +23,20 @@ func (tests SudokuTests[D, A]) Run(t *testing.T, builderFunc func() sudoku.Sudok
 			s, err := b.Build()
 			assert.NoError(t, err)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			s.SetLogger(sudoku.NewLogger[D]())
 
+			//g := s.NewGuesser()
+			//g.Use(strategy.AllStrategies[D, A]())
+			//for s := range g.Guess(nil, ctx) {
+			//	s.Print()
+			//}
+
 			slv := s.NewSolver()
 			slv.Use(strategy.AllStrategies[D, A]())
-			slv.SetChainLimit(2)
+			slv.SetChainLimit(0)
 			assert.NoError(t, slv.Solve(ctx))
 			if !assert.True(t, s.IsSolved()) {
 				s.Print()

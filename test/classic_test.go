@@ -51,20 +51,20 @@ func TestClassic(t *testing.T) {
 				"      8",
 			),
 		},
-		//"impossible": {
-		//	rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
-		//	rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
-		//		"8        ",
-		//		"  36     ",
-		//		" 7  9 2  ",
-		//		" 5   7   ",
-		//		"    457  ",
-		//		"   1   3 ",
-		//		"  1    68",
-		//		"  85   1 ",
-		//		" 9    4  ",
-		//	),
-		//},
+		"impossible": {
+			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+			rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
+				"8        ",
+				"  36     ",
+				" 7  9 2  ",
+				" 5   7   ",
+				"    457  ",
+				"   1   3 ",
+				"  1    68",
+				"  85   1 ",
+				" 9    4  ",
+			),
+		},
 	}.Run(t, sudoku.NewSudokuBuilder9x9)
 }
 

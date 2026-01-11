@@ -4,6 +4,17 @@ type Rule[D Digits, A Area] interface {
 	Apply(s SudokuBuilder[D, A]) error
 }
 
+type Rules[D Digits, A Area] []Rule[D, A]
+
+func (rs Rules[D, A]) Apply(s SudokuBuilder[D, A]) error {
+	for _, r := range rs {
+		if err := r.Apply(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type Restriction[D Digits, A Area] interface {
 	Name() string
 }
@@ -129,11 +140,6 @@ func (s *sudokuBuilder[D, A, G, S]) AddSolveProcessor(sp SolveProcessor[D, A]) {
 
 func (s *sudokuBuilder[D, A, G, S]) AddExclusionArea(l CellLocation, a A) {
 	s.AreaWithout(&a, l)
-	//if v, isSingle := s.Get(l).Single(); !isSingle {
-	//	for _, cell := range a.Locations {
-	//		_ = s.RemoveOption(cell, v)
-	//	}
-	//}
 	s.exclusionAreas[l.Row][l.Col] = s.UnionAreas(s.exclusionAreas[l.Row][l.Col], a)
 }
 

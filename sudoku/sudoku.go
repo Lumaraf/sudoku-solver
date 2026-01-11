@@ -46,6 +46,9 @@ type Sudoku[D Digits, A Area] interface {
 	// GetExclusionArea returns the exclusion area for the specified cell location.
 	GetExclusionArea(l CellLocation) A
 
+	// IsUniqueArea checks if all cells in the area require unique digits.
+	IsUniqueArea(area A) bool
+
 	// SetLogger sets the logger for the Sudoku puzzle.
 	SetLogger(logger Logger[D])
 
@@ -230,19 +233,6 @@ func (s *sudoku[D, A, G, S]) RemoveOption(l CellLocation, v int) error {
 	return s.RemoveMask(l, mask)
 }
 
-//func (s *sudoku[D, A, G, S]) RequireValueInArea(v int, a A) error {
-//	overlap := Area{}.Not()
-//	for _, l := range a.Locations {
-//		overlap = overlap.And(s.GetExclusionArea(l))
-//	}
-//	for _, l := range overlap.Locations {
-//		if err := s.RemoveOption(l, v); err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
-
 func (s *sudoku[D, A, G, S]) checkValue(v int) error {
 	if v < 1 || v > s.Size() {
 		return ErrValueOutOfRange
@@ -264,6 +254,17 @@ func (s *sudoku[D, A, G, S]) NextChangedArea() A {
 
 func (s *sudoku[D, A, G, S]) GetExclusionArea(l CellLocation) A {
 	return s.exclusionAreas[l.Row][l.Col]
+}
+
+func (s *sudoku[D, A, G, S]) IsUniqueArea(area A) bool {
+	for _, l := range area.Locations {
+		expectedArea := area
+		s.AreaWithout(&expectedArea, l)
+		if s.IntersectAreas(area, s.GetExclusionArea(l)) != expectedArea {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *sudoku[D, A, G, S]) SetLogger(logger Logger[D]) {

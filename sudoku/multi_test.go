@@ -12,8 +12,10 @@ func TestMultiSudokuBuilder_Overlap(t *testing.T) {
 	assert.NoError(t, mb.Overlap(sb1, CellLocation{0, 0}, 3, 3, sb2))
 	//assert.NoError(t, mb.Overlap(sb2, CellLocation{8, 8}, 3, 3, sb1))
 
-	s1 := sb1.Build()
-	s2 := sb2.Build()
+	s1, err := sb1.Build()
+	assert.NoError(t, err)
+	s2, err := sb2.Build()
+	assert.NoError(t, err)
 
 	assert.NoError(t, s1.Set(CellLocation{0, 0}, 1))
 	assert.Equal(t, s2.NewDigits(1), s2.Get(CellLocation{6, 6}))

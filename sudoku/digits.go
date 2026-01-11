@@ -86,8 +86,10 @@ func (c digits_16) String() string {
 	str := ""
 	for i := 1; i <= 16; i++ {
 		if c.CanContain(i) {
+			if str != "" {
+				str += ","
+			}
 			str += string(rune(i + '0'))
-			str += ","
 		}
 	}
 	return str

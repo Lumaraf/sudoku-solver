@@ -86,7 +86,7 @@ func (slv *solver[D, A, G, S]) createStrategies() Strategies[D, A] {
 	for _, factory := range slv.strategyFactories {
 		strategies = append(strategies, factory.For(slv.sudoku)...)
 	}
-	sort.Sort(strategies)
+	sort.Stable(strategies)
 	return strategies
 }
 

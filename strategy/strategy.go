@@ -30,5 +30,17 @@ func AllStrategies[D sudoku.Digits, A sudoku.Area]() sudoku.StrategyFactories[D,
 		// Examines all possible placements of a candidate in a unit and excludes candidates that cannot appear in any valid solution.
 		// This is related to "hidden singles" and advanced exclusion logic.
 		sudoku.StrategyFactoryFunc[D, A](UniqueExclusionStrategyFactory[D, A]),
+
+		// PatternOverlayStrategy:
+		// Finds all possible placement patterns for every digit and overlays them to eliminate impossible options.
+		sudoku.StrategyFactoryFunc[D, A](PatternOverlayStrategyFactory[D, A]),
+
+		// KillerCageStrategy:
+		// Utilizes the sum constraints of killer sudoku cages to limit candidate placements.
+		sudoku.StrategyFactoryFunc[D, A](KillerCageStrategyFactory[D, A]),
+
+		// HiddenKillerCageStrategy:
+		// Identifies hidden killer cages by analyzing the grid for areas that must sum to specific values based on existing cages.
+		sudoku.StrategyFactoryFunc[D, A](HiddenKillerCageStrategyFactory[D, A]),
 	}
 }
