@@ -7,7 +7,7 @@ import (
 
 var mutipleSolutionsError = errors.New("multiple solutions")
 
-type Sudoku[D Digits, A Area] interface {
+type Sudoku[D Digits[D], A Area] interface {
 	BaseSpec
 	DigitsSpec[D]
 	AreaSpec[A]
@@ -33,6 +33,9 @@ type Sudoku[D Digits, A Area] interface {
 
 	// RemoveOption removes a specific digit option from the specified cell location.
 	RemoveOption(l CellLocation, v int) error
+
+	// PossibleLocations returns the area of possible locations for the specified digit.
+	PossibleLocations(v int) A
 
 	// SolvedArea returns the area of the grid that is solved.
 	SolvedArea() A
@@ -61,12 +64,6 @@ type Sudoku[D Digits, A Area] interface {
 	// Stats returns the statistics of the Sudoku puzzle.
 	Stats() Stats
 
-	//// Solve attempts to solve the Sudoku puzzle.
-	//Solve(ctx context.Context) error
-
-	// GuessSolutions generates possible solutions by guessing.
-	//GuessSolutions(ctx context.Context, g Guesser[D,A]) func(func(Sudoku[D,A]) bool)
-
 	// IsSolved checks if the Sudoku puzzle is solved.
 	IsSolved() bool
 
@@ -88,7 +85,7 @@ func (l CellLocation) Box() int {
 	return l.Row/3*3 + l.Col/3
 }
 
-type sudoku[D Digits, A Area, G comparable, S size[D, A, G]] struct {
+type sudoku[D Digits[D], A Area, G comparable, S size[D, A, G]] struct {
 	size[D, A, G]
 	grid             G
 	exclusionAreas   [][]A
@@ -113,7 +110,7 @@ type Stats struct {
 	GuessMisses        int
 }
 
-func newSudoku[D Digits, A Area, G comparable, S size[D, A, G]]() *sudoku[D, A, G, S] {
+func newSudoku[D Digits[D], A Area, G comparable, S size[D, A, G]]() *sudoku[D, A, G, S] {
 	sizeSpec := *new(S)
 	s := sudoku[D, A, G, S]{
 		size:        sizeSpec,
@@ -238,6 +235,10 @@ func (s *sudoku[D, A, G, S]) checkValue(v int) error {
 		return ErrValueOutOfRange
 	}
 	return nil
+}
+
+func (s *sudoku[D, A, G, S]) PossibleLocations(v int) A {
+	return s.size.PossibleLocations(s.grid, s.NewDigits(v))
 }
 
 func (s *sudoku[D, A, G, S]) SolvedArea() A {

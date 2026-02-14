@@ -52,5 +52,46 @@ func TestKillerCage(t *testing.T) {
 				},
 			),
 		},
+		//"besties 2": { 		// not yet solvable
+		//	rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+		//	rule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
+		//	rule.KillerCageRulesFromString[sudoku.Digits9, sudoku.Area9x9](
+		//		[]string{
+		//			"         ",
+		//			"         ",
+		//			"  AB CC  ",
+		//			"  ABHIJ K",
+		//			"    HIJ K",
+		//			"  DD FG  ",
+		//			"  EE FG  ",
+		//			"         ",
+		//			"   LL    ",
+		//		},
+		//		map[rune]int{
+		//			'A': 7,
+		//			'B': 7,
+		//			'C': 7,
+		//			'D': 7,
+		//			'E': 7,
+		//			'F': 7,
+		//			'G': 7,
+		//			'H': 13,
+		//			'I': 13,
+		//			'J': 13,
+		//			'K': 13,
+		//			'L': 13,
+		//		},
+		//	),
+		//	rule.AreaSumRule[sudoku.Digits9, sudoku.Area9x9]{
+		//		Area: func() []sudoku.CellLocation {
+		//			area := make([]sudoku.CellLocation, 0, 9)
+		//			for n := 0; n < 9; n++ {
+		//				area = append(area, sudoku.CellLocation{n, n})
+		//			}
+		//			return area
+		//		}(),
+		//		Sum: 39,
+		//	},
+		//},
 	}.Run(t, sudoku.NewSudokuBuilder9x9)
 }

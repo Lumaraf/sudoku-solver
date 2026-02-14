@@ -10,12 +10,12 @@ var (
 	ErrTooFewDigits = errors.New("too few available digits in unique set")
 )
 
-type UniqueAreaRule[D sudoku.Digits, A sudoku.Area] struct {
+type UniqueAreaRule[D sudoku.Digits[D], A sudoku.Area] struct {
 	name string
 	area A
 }
 
-func NewUniqueAreaRule[D sudoku.Digits, A sudoku.Area](name string, area A) UniqueAreaRule[D, A] {
+func NewUniqueAreaRule[D sudoku.Digits[D], A sudoku.Area](name string, area A) UniqueAreaRule[D, A] {
 	return UniqueAreaRule[D, A]{
 		name: name,
 		area: area,
@@ -28,11 +28,11 @@ func (r UniqueAreaRule[D, A]) Name() string {
 
 func (r UniqueAreaRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	sb.AddRestriction(UniqueRestriction[D, A]{
-		name: "custom area",
+		name: r.name,
 		area: r.area,
 	})
 	sb.AddValidator(UniqueValidator[D, A]{
-		name: "custom area",
+		name: r.name,
 		area: r.area,
 	})
 	for _, cell := range r.area.Locations {
@@ -41,7 +41,7 @@ func (r UniqueAreaRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type ClassicRules[D sudoku.Digits, A sudoku.Area] struct{}
+type ClassicRules[D sudoku.Digits[D], A sudoku.Area] struct{}
 
 func (r ClassicRules[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	rules := make(sudoku.Rules[D, A], 0, sb.Size()*3)
@@ -60,7 +60,7 @@ func (r ClassicRules[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return sb.Use(rules...)
 }
 
-type DiagonalRule[D sudoku.Digits, A sudoku.Area] struct{}
+type DiagonalRule[D sudoku.Digits[D], A sudoku.Area] struct{}
 
 func (r DiagonalRule[D, A]) Name() string {
 	return "diagonal"
@@ -79,7 +79,28 @@ func (r DiagonalRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	)
 }
 
-type UniqueRestriction[D sudoku.Digits, A sudoku.Area] struct {
+type DisjointGroupsRule[D sudoku.Digits[D], A sudoku.Area] struct{}
+
+func (r DisjointGroupsRule[D, A]) Name() string {
+	return "disjoint groups"
+}
+
+func (r DisjointGroupsRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
+	groups := make([]A, sb.Size())
+	for box := 0; box < sb.Size(); box++ {
+		for n, l := range sb.Box(box).Locations {
+			sb.AreaWith(&groups[n], l)
+		}
+	}
+
+	rules := make(sudoku.Rules[D, A], 0, len(groups))
+	for n, group := range groups {
+		rules = append(rules, NewUniqueAreaRule[D, A](fmt.Sprintf("disjoint group %d", n+1), group))
+	}
+	return sb.Use(rules...)
+}
+
+type UniqueRestriction[D sudoku.Digits[D], A sudoku.Area] struct {
 	name string
 	area A
 }
@@ -92,13 +113,13 @@ func (r UniqueRestriction[D, A]) Area() A {
 	return r.area
 }
 
-type UniqueValidator[D sudoku.Digits, A sudoku.Area] struct {
+type UniqueValidator[D sudoku.Digits[D], A sudoku.Area] struct {
 	name string
 	area A
 }
 
-func (r UniqueValidator[D, A]) Name() string {
-	return fmt.Sprintf("Unique %s", r.name)
+func (v UniqueValidator[D, A]) Name() string {
+	return fmt.Sprintf("Unique %s", v.name)
 }
 
 func (v UniqueValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {

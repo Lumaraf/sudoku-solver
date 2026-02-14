@@ -6,7 +6,7 @@ import (
 )
 
 // finds all possible placement patterns for every digit and overlays them to eliminate impossible options
-func PatternOverlayStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func PatternOverlayStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	requiredAreas := make([]A, 0, s.Size()*3)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
@@ -21,7 +21,7 @@ func PatternOverlayStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudo
 	}}
 }
 
-type PatternOverlayStrategy[D sudoku.Digits, A sudoku.Area] struct {
+type PatternOverlayStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
 	area          A
 	requiredAreas []A
 	extraAreas    []A

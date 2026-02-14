@@ -16,7 +16,7 @@ func Not[BO interface{ not() BO }](a BO) BO {
 	return a.not()
 }
 
-func PrintGrid[D Digits, A Area](s Sudoku[D, A]) {
+func PrintGrid[D Digits[D], A Area](s Sudoku[D, A]) {
 	boxRows, boxCols := s.BoxSize()
 	gridSize := s.Size()
 
@@ -78,7 +78,7 @@ func PrintGrid[D Digits, A Area](s Sudoku[D, A]) {
 	fmt.Println(bottomLine)
 }
 
-func GetRestrictions[D Digits, A Area, R Restriction[D, A]](s Sudoku[D, A]) func(yield func(R) bool) {
+func GetRestrictions[D Digits[D], A Area, R Restriction[D, A]](s Sudoku[D, A]) func(yield func(R) bool) {
 	return func(yield func(R) bool) {
 		for _, restriction := range s.getRestrictions() {
 			if r, ok := restriction.(R); ok {

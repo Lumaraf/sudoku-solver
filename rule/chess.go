@@ -2,7 +2,7 @@ package rule
 
 import "github.com/lumaraf/sudoku-solver/sudoku"
 
-type AntiKingRule[D sudoku.Digits, A sudoku.Area] struct{}
+type AntiKingRule[D sudoku.Digits[D], A sudoku.Area] struct{}
 
 func (r AntiKingRule[D, A]) Name() string {
 	return "anti-king"
@@ -23,7 +23,7 @@ func (r AntiKingRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	})
 }
 
-type AntiKnightRule[D sudoku.Digits, A sudoku.Area] struct{}
+type AntiKnightRule[D sudoku.Digits[D], A sudoku.Area] struct{}
 
 func (r AntiKnightRule[D, A]) Name() string {
 	return "anti-knight"
@@ -44,7 +44,7 @@ func (r AntiKnightRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	})
 }
 
-type RelativeExclusionRule[D sudoku.Digits, A sudoku.Area] struct {
+type RelativeExclusionRule[D sudoku.Digits[D], A sudoku.Area] struct {
 	offsets sudoku.Offsets
 }
 

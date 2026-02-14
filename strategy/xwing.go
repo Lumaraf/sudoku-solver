@@ -5,7 +5,7 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-func XWingStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func XWingStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	areas := make(map[A]bool, s.Size()*2)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		areas[r.Area()] = true
@@ -29,7 +29,7 @@ func XWingStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A])
 	return nil
 }
 
-type XWingStrategy[D sudoku.Digits, A sudoku.Area] struct {
+type XWingStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
 	area A
 	rows []int
 	cols []int

@@ -20,7 +20,7 @@ type Area6x6 = area128[gridSize6]
 
 type Digits6 = digits_16
 
-type grid6x6[D Digits] [6][6]D
+type grid6x6[D Digits[D]] [6][6]D
 
 type size6 struct {
 	digitsOps_16
@@ -39,15 +39,15 @@ func (s size6) GridCell(g *grid6x6[Digits6], row, col int) *Digits6 {
 }
 
 func (s size6) NewDigits(values ...int) Digits6 {
-	d := Digits6(0)
+	d := Digits6{v: 0}
 	for _, v := range values {
 		d = d.withOption(v)
 	}
-	return d & s.AllDigits()
+	return d.And(s.AllDigits())
 }
 
 func (s size6) AllDigits() Digits6 {
-	return digits_16(0b111111)
+	return Digits6{v: 0b111111}
 }
 
 func (s size6) NewArea(locs ...CellLocation) Area6x6 {
@@ -87,4 +87,16 @@ func (s size6) InvertArea(a Area6x6) Area6x6 {
 		gs:   a.gs,
 		bits: [2]uint64{0b111111_111111_111111_111111_111111_111111, 0},
 	})
+}
+
+func (s size6) PossibleLocations(g grid6x6[digits_16], d Digits6) (a Area6x6) {
+	for row := 0; row < s.Size(); row++ {
+		for col := 0; col < s.Size(); col++ {
+			cell := s.GridCell(&g, row, col)
+			if !(*cell).And(d).Empty() {
+				s.AreaWith(&a, CellLocation{row, col})
+			}
+		}
+	}
+	return
 }

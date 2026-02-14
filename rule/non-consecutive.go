@@ -4,7 +4,7 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-type NonConsecutiveRule[D sudoku.Digits, A sudoku.Area] struct{}
+type NonConsecutiveRule[D sudoku.Digits[D], A sudoku.Area] struct{}
 
 func (r NonConsecutiveRule[D, A]) Name() string {
 	return "non-consecutive"
@@ -35,7 +35,7 @@ func (r NonConsecutiveRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type NonConsecutiveChangeProcessor[D sudoku.Digits, A sudoku.Area] struct {
+type NonConsecutiveChangeProcessor[D sudoku.Digits[D], A sudoku.Area] struct {
 	masks   map[int]D
 	offsets sudoku.Offsets
 }

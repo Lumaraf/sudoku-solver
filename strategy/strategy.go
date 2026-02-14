@@ -4,7 +4,7 @@ import "github.com/lumaraf/sudoku-solver/sudoku"
 
 // AllStrategies returns all available strategies used by the solver.
 // Each strategy is documented directly above its registration for clarity.
-func AllStrategies[D sudoku.Digits, A sudoku.Area]() sudoku.StrategyFactories[D, A] {
+func AllStrategies[D sudoku.Digits[D], A sudoku.Area]() sudoku.StrategyFactories[D, A] {
 	return sudoku.StrategyFactories[D, A]{
 		// UniqueSetStrategy:
 		// Detects sets of cells within a unit (row, column or box) that contain exactly N candidates among N cells.

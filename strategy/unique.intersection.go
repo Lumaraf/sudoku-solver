@@ -6,7 +6,7 @@ import (
 )
 
 // removes options from cells in unique areas if they are forced into an intersection with another unique area
-func UniqueIntersectionStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func UniqueIntersectionStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
@@ -31,7 +31,7 @@ func UniqueIntersectionStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.
 	return strategies
 }
 
-type UniqueIntersectionStrategy[D sudoku.Digits, A sudoku.Area] struct {
+type UniqueIntersectionStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
 	area         A
 	source       A
 	intersection A

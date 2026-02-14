@@ -1,6 +1,6 @@
 package sudoku
 
-type Validator[D Digits, A Area] interface {
+type Validator[D Digits[D], A Area] interface {
 	Name() string
 	Validate(s Sudoku[D, A]) error
 }

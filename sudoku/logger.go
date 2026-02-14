@@ -15,13 +15,13 @@ func (s StringContext) Name() string {
 	return string(s)
 }
 
-type Logger[D Digits] interface {
+type Logger[D Digits[D]] interface {
 	UpdateCell(loc CellLocation, old, new D)
 	EnterContext(n NamedContext)
 	ExitContext()
 }
 
-type voidLogger[D Digits] struct{}
+type voidLogger[D Digits[D]] struct{}
 
 func (v voidLogger[D]) UpdateCell(loc CellLocation, old, new D) {
 }
@@ -32,12 +32,12 @@ func (v voidLogger[D]) EnterContext(n NamedContext) {
 func (v voidLogger[D]) ExitContext() {
 }
 
-type consoleLogger[D Digits] struct {
+type consoleLogger[D Digits[D]] struct {
 	context             []NamedContext
 	printedContextLevel int
 }
 
-func NewLogger[D Digits]() Logger[D] {
+func NewLogger[D Digits[D]]() Logger[D] {
 	return &consoleLogger[D]{}
 }
 

@@ -5,7 +5,7 @@ type BaseSpec interface {
 	BoxSize() (int, int)
 }
 
-type DigitsSpec[D Digits] interface {
+type DigitsSpec[D Digits[D]] interface {
 	NewDigits(values ...int) D
 	AllDigits() D
 	IntersectDigits(d1 D, d2 D) D
@@ -23,10 +23,11 @@ type AreaSpec[A Area] interface {
 	InvertArea(a A) A
 }
 
-type size[D Digits, A Area, G comparable] interface {
+type size[D Digits[D], A Area, G comparable] interface {
 	BaseSpec
 	DigitsSpec[D]
 	AreaSpec[A]
 
 	GridCell(g *G, row, col int) *D
+	PossibleLocations(g G, d D) A
 }

@@ -5,12 +5,14 @@ import (
 	"math/bits"
 )
 
-//const AllDigits = digits_16(0b111111111)
-
 var ErrValueOutOfRange = errors.New("value out of range")
 
-type Digits interface {
+type Digits[D Digits[D]] interface {
 	comparable
+
+	And(other D) D
+	Or(other D) D
+	Not() D
 
 	CanContain(v int) bool
 	Empty() bool
@@ -23,28 +25,30 @@ type Digits interface {
 
 type Values func(func(int) bool)
 
-type digits_16 uint16
+type digits_16 struct {
+	v uint16
+}
 
 func (c digits_16) CanContain(v int) bool {
-	return uint16(c)&c.getBit(v) != 0
+	return c.v&c.getBit(v) != 0
 }
 
 func (c digits_16) withOption(v int) digits_16 {
-	return c | digits_16(c.getBit(v))
+	return digits_16{v: c.v | c.getBit(v)}
 }
 
 func (c digits_16) Empty() bool {
-	return c == 0
+	return c.v == 0
 }
 
 func (c digits_16) Count() int {
-	return bits.OnesCount16(uint16(c))
+	return bits.OnesCount16(c.v)
 }
 
 func (c digits_16) Single() (v int, isSingle bool) {
 	isSingle = c.Count() == 1
 	if isSingle {
-		v = bits.TrailingZeros16(uint16(c)) + 1
+		v = bits.TrailingZeros16(c.v) + 1
 	}
 	return
 }
@@ -54,7 +58,7 @@ func (c digits_16) getBit(v int) uint16 {
 }
 
 func (c digits_16) Values(yield func(int) bool) {
-	mask := uint16(c)
+	mask := c.v
 	for mask != 0 {
 		lz := bits.TrailingZeros16(mask)
 		mask = mask & ^(1 << lz)
@@ -65,21 +69,21 @@ func (c digits_16) Values(yield func(int) bool) {
 }
 
 func (c digits_16) Min() int {
-	return bits.TrailingZeros16(uint16(c)) + 1
+	return bits.TrailingZeros16(c.v) + 1
 }
 
 func (c digits_16) Max() int {
-	return 64 - bits.LeadingZeros16(uint16(c))
+	return 64 - bits.LeadingZeros16(c.v)
 }
 
-func (c digits_16) and(d digits_16) digits_16 {
-	return c & d
+func (c digits_16) And(d digits_16) digits_16 {
+	return digits_16{v: c.v & d.v}
 }
-func (c digits_16) or(d digits_16) digits_16 {
-	return c | d
+func (c digits_16) Or(d digits_16) digits_16 {
+	return digits_16{v: c.v | d.v}
 }
-func (c digits_16) not() digits_16 {
-	return ^c
+func (c digits_16) Not() digits_16 {
+	return digits_16{v: ^c.v}
 }
 
 func (c digits_16) String() string {
@@ -98,13 +102,13 @@ func (c digits_16) String() string {
 type digitsOps_16 struct{}
 
 func (digitsOps_16) IntersectDigits(d1, d2 digits_16) digits_16 {
-	return d1.and(d2)
+	return d1.And(d2)
 }
 
 func (digitsOps_16) UnionDigits(d1 digits_16, d2 digits_16) digits_16 {
-	return d1.or(d2)
+	return d1.Or(d2)
 }
 
 func (digitsOps_16) InvertDigits(d digits_16) digits_16 {
-	return d.not()
+	return d.Not()
 }

@@ -20,7 +20,7 @@ type Area9x9 = area128[gridSize9]
 
 type Digits9 = digits_16
 
-type grid9x9[D Digits] [9][9]D
+type grid9x9[D Digits[D]] [9 * 9]digits_16
 
 type size9 struct{ digitsOps_16 }
 
@@ -33,19 +33,19 @@ func (s size9) BoxSize() (int, int) {
 }
 
 func (s size9) GridCell(g *grid9x9[digits_16], row, col int) *Digits9 {
-	return &g[row][col]
+	return &g[row*9+col]
 }
 
 func (s size9) NewDigits(values ...int) Digits9 {
-	d := Digits9(0)
+	d := Digits9{}
 	for _, v := range values {
 		d = d.withOption(v)
 	}
-	return d & s.AllDigits()
+	return d.And(s.AllDigits())
 }
 
 func (s size9) AllDigits() Digits9 {
-	return digits_16(0b111111111)
+	return Digits9{v: 0b111111111}
 }
 
 func (s size9) NewArea(locs ...CellLocation) Area9x9 {
@@ -88,4 +88,16 @@ func (s size9) InvertArea(a Area9x9) Area9x9 {
 	a.bits[0] = ^a.bits[0]
 	a.bits[1] = (^a.bits[1]) & 0b11111111111111111
 	return a
+}
+
+func (s size9) PossibleLocations(g grid9x9[digits_16], d Digits9) (a Area9x9) {
+	for row := 0; row < s.Size(); row++ {
+		for col := 0; col < s.Size(); col++ {
+			cell := s.GridCell(&g, row, col)
+			if !(*cell).And(d).Empty() {
+				s.AreaWith(&a, CellLocation{row, col})
+			}
+		}
+	}
+	return
 }

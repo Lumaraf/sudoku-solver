@@ -5,7 +5,7 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-func HiddenKillerCageStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	allMasks := generateAreaSumMasks(s)
 	strategies := sudoku.Strategies[D, A]{}
 
@@ -73,7 +73,7 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Su
 	return strategies
 }
 
-func hiddenCageBaseAreas[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) func(func(A) bool) {
+func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) func(func(A) bool) {
 	var combineAreas func(current A, uniqueAreas []A) func(func(A) bool)
 	combineAreas = func(current A, ua []A) func(func(A) bool) {
 		return func(yield func(A) bool) {
@@ -110,7 +110,7 @@ func hiddenCageBaseAreas[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) 
 	return combineAreas(s.NewArea(), uniqueAreas)
 }
 
-func areasTouch[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A], a1, a2 A) bool {
+func areasTouch[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A], a1, a2 A) bool {
 	offsets := sudoku.Offsets{
 		sudoku.Offset{Row: -1, Col: 0},
 		sudoku.Offset{Row: 0, Col: -1},

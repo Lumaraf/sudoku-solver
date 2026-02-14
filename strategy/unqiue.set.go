@@ -6,7 +6,7 @@ import (
 )
 
 // checks unique areas for complete sets of digits and removes those from other cells in the area
-func UniqueSetStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func UniqueSetStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		strategies = append(strategies, UniqueSetStrategy[D, A]{
@@ -16,7 +16,7 @@ func UniqueSetStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D,
 	return strategies
 }
 
-type UniqueSetStrategy[D sudoku.Digits, A sudoku.Area] struct {
+type UniqueSetStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
 	Area A
 }
 

@@ -15,14 +15,14 @@ const (
 	DIFFICULTY_IMPOSSIBLE
 )
 
-type Strategy[D Digits, A Area] interface {
+type Strategy[D Digits[D], A Area] interface {
 	Name() string
 	Difficulty() Difficulty
 	Solve(s Sudoku[D, A]) ([]Strategy[D, A], error)
 	AreaFilter() A
 }
 
-type Strategies[D Digits, A Area] []Strategy[D, A]
+type Strategies[D Digits[D], A Area] []Strategy[D, A]
 
 func (s Strategies[D, A]) Len() int {
 	return len(s)
@@ -36,17 +36,17 @@ func (s Strategies[D, A]) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-type StrategyFactory[D Digits, A Area] interface {
+type StrategyFactory[D Digits[D], A Area] interface {
 	For(s Sudoku[D, A]) []Strategy[D, A]
 }
 
-type StrategyFactoryFunc[D Digits, A Area] func(s Sudoku[D, A]) []Strategy[D, A]
+type StrategyFactoryFunc[D Digits[D], A Area] func(s Sudoku[D, A]) []Strategy[D, A]
 
 func (sff StrategyFactoryFunc[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
 	return sff(s)
 }
 
-type StrategyFactories[D Digits, A Area] []StrategyFactory[D, A]
+type StrategyFactories[D Digits[D], A Area] []StrategyFactory[D, A]
 
 func (sf StrategyFactories[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
 	strategies := make([]Strategy[D, A], 0, len(sf))
@@ -56,13 +56,13 @@ func (sf StrategyFactories[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
 	return strategies
 }
 
-type Solver[D Digits, A Area] interface {
+type Solver[D Digits[D], A Area] interface {
 	SetChainLimit(limit int)
 	Use(factories ...StrategyFactory[D, A])
 	Solve(ctx context.Context) error
 }
 
-type solver[D Digits, A Area, G comparable, S size[D, A, G]] struct {
+type solver[D Digits[D], A Area, G comparable, S size[D, A, G]] struct {
 	sudoku            *sudoku[D, A, G, S]
 	chainLimit        int
 	strategyFactories []StrategyFactory[D, A]

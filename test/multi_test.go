@@ -1,16 +1,17 @@
-package main
+package test
 
 import (
 	"context"
-	"fmt"
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func main() {
+func TestMulti(t *testing.T) {
 	sb1 := sudoku.NewSudokuBuilder9x9()
-	sb1.Use(
+	assert.NoError(t, sb1.Use(
 		rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
 		rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
 			"8 5",
@@ -22,10 +23,10 @@ func main() {
 			" 63  7",
 			"9  1 6",
 		),
-	)
+	))
 
 	sb2 := sudoku.NewSudokuBuilder9x9()
-	sb2.Use(
+	assert.NoError(t, sb2.Use(
 		rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
 		rule.GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](
 			" 154",
@@ -38,12 +39,13 @@ func main() {
 			"   2  7 8",
 			"7  5   9",
 		),
-	)
+	))
 
 	mb := sudoku.MultiSudokuBuilder[sudoku.Digits9, sudoku.Area9x9]{}
-	mb.Overlap(sb1, sudoku.CellLocation{8, 8}, 3, 3, sb2)
+	assert.NoError(t, mb.Overlap(sb1, sudoku.CellLocation{8, 8}, 3, 3, sb2))
 
 	m, err := mb.Build()
-	fmt.Println(err)
-	m.Solve(context.Background(), strategy.AllStrategies[sudoku.Digits9, sudoku.Area9x9]())
+	assert.NoError(t, err)
+	assert.NoError(t, m.Solve(context.Background(), strategy.AllStrategies[sudoku.Digits9, sudoku.Area9x9]()))
+	assert.True(t, m.IsSolved())
 }

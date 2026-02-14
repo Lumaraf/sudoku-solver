@@ -1,10 +1,10 @@
 package sudoku
 
-type Rule[D Digits, A Area] interface {
+type Rule[D Digits[D], A Area] interface {
 	Apply(s SudokuBuilder[D, A]) error
 }
 
-type Rules[D Digits, A Area] []Rule[D, A]
+type Rules[D Digits[D], A Area] []Rule[D, A]
 
 func (rs Rules[D, A]) Apply(s SudokuBuilder[D, A]) error {
 	for _, r := range rs {
@@ -15,21 +15,21 @@ func (rs Rules[D, A]) Apply(s SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type Restriction[D Digits, A Area] interface {
+type Restriction[D Digits[D], A Area] interface {
 	Name() string
 }
 
-type ChangeProcessor[D Digits, A Area] interface {
+type ChangeProcessor[D Digits[D], A Area] interface {
 	Name() string
 	ProcessChange(s Sudoku[D, A], cell CellLocation, mask D) error
 }
 
-type SolveProcessor[D Digits, A Area] interface {
+type SolveProcessor[D Digits[D], A Area] interface {
 	Name() string
 	ProcessSolve(s Sudoku[D, A], cell CellLocation, mask D) error
 }
 
-type SolveProcessors[D Digits, A Area] []SolveProcessor[D, A]
+type SolveProcessors[D Digits[D], A Area] []SolveProcessor[D, A]
 
 func (sps SolveProcessors[D, A]) Name() string {
 	return "Solve Processors"
@@ -48,14 +48,18 @@ func (sps SolveProcessors[D, A]) ProcessChange(s Sudoku[D, A], cell CellLocation
 	return nil
 }
 
-type ExclusionChainSolveProcessor[D Digits, A Area] struct{}
+type ExclusionChainSolveProcessor[D Digits[D], A Area] struct{}
 
 func (e ExclusionChainSolveProcessor[D, A]) Name() string {
 	return "Exclusion Chain"
 }
 
 func (e ExclusionChainSolveProcessor[D, A]) ProcessSolve(s Sudoku[D, A], cell CellLocation, mask D) error {
+	//v, _ := mask.Single()
+	//area := s.PossibleLocations(v)
+	//s.AreaWithout(&area, cell)
 	for _, excludedCell := range s.GetExclusionArea(cell).Locations {
+		//for _, excludedCell := range s.IntersectAreas(area, s.GetExclusionArea(cell)).Locations {
 		if err := s.RemoveMask(excludedCell, mask); err != nil {
 			return err
 		}
@@ -63,7 +67,7 @@ func (e ExclusionChainSolveProcessor[D, A]) ProcessSolve(s Sudoku[D, A], cell Ce
 	return nil
 }
 
-type SudokuBuilder[D Digits, A Area] interface {
+type SudokuBuilder[D Digits[D], A Area] interface {
 	BaseSpec
 	DigitsSpec[D]
 	AreaSpec[A]
@@ -75,6 +79,7 @@ type SudokuBuilder[D Digits, A Area] interface {
 	Box(box int) A
 
 	SetCell(row, col, value int) error
+	MaskCell(row, col int, mask D) error
 
 	Use(rules ...Rule[D, A]) error
 
@@ -87,12 +92,12 @@ type SudokuBuilder[D Digits, A Area] interface {
 	Build() (Sudoku[D, A], error)
 }
 
-type sudokuBuilder[D Digits, A Area, G comparable, S size[D, A, G]] struct {
+type sudokuBuilder[D Digits[D], A Area, G comparable, S size[D, A, G]] struct {
 	*sudoku[D, A, G, S]
 	solveProcessors SolveProcessors[D, A]
 }
 
-func newSudokuBuilder[D Digits, A Area, G comparable, S size[D, A, G]]() SudokuBuilder[D, A] {
+func newSudokuBuilder[D Digits[D], A Area, G comparable, S size[D, A, G]]() SudokuBuilder[D, A] {
 	s := newSudoku[D, A, G, S]()
 	s.changeProcessors = append(s.changeProcessors, SolveProcessors[D, A]{
 		ExclusionChainSolveProcessor[D, A]{},
@@ -111,6 +116,10 @@ func (s *sudokuBuilder[D, A, G, S]) buildTarget() Sudoku[D, A] {
 
 func (s *sudokuBuilder[D, A, G, S]) SetCell(row, col, value int) error {
 	return s.Set(CellLocation{row, col}, value)
+}
+
+func (s *sudokuBuilder[D, A, G, S]) MaskCell(row, col int, mask D) error {
+	return s.Mask(CellLocation{row, col}, mask)
 }
 
 func (s *sudokuBuilder[D, A, G, S]) Use(rules ...Rule[D, A]) error {

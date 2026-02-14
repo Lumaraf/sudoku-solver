@@ -7,13 +7,12 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-func KillerCageStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func KillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	allMasks := generateAreaSumMasks(s)
 
 	strategies := sudoku.Strategies[D, A]{}
 	for r := range sudoku.GetRestrictions[D, A, rule.AreaSumRestriction[D, A]](s) {
 		if !s.IsUniqueArea(r.Area()) {
-			fmt.Printf("Skipping killer cage strategy for non-unique area: %v\n", r.Area())
 			continue
 		}
 
@@ -35,7 +34,7 @@ func KillerCageStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D
 	return strategies
 }
 
-type KillerCageStrategy[D sudoku.Digits, A sudoku.Area] struct {
+type KillerCageStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
 	area  A
 	masks []D
 }
@@ -143,7 +142,7 @@ func (st KillerCageStrategy[D, A]) isMaskPlaceable(s sudoku.Sudoku[D, A], area A
 
 var areaSumMasksCache = map[int]any{}
 
-func generateAreaSumMasks[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) map[int][]D {
+func generateAreaSumMasks[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) map[int][]D {
 	if cache, ok := areaSumMasksCache[s.Size()].(map[int][]D); ok {
 		return cache
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 // removes options in the puzzle that are excluded by all possible placements of a digit in a unique area
-func UniqueExclusionStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func UniqueExclusionStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
@@ -21,7 +21,7 @@ func UniqueExclusionStrategyFactory[D sudoku.Digits, A sudoku.Area](s sudoku.Sud
 	return strategies
 }
 
-type UniqueExclusionStrategy[D sudoku.Digits, A sudoku.Area] struct {
+type UniqueExclusionStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
 	area A
 }
 
