@@ -3,14 +3,15 @@ package test
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
-type SudokuTests[D sudoku.Digits[D], A sudoku.Area] map[string][]sudoku.Rule[D, A]
+type SudokuTests[D sudoku.Digits[D], A sudoku.Area[A]] map[string][]sudoku.Rule[D, A]
 
 func (tests SudokuTests[D, A]) Run(t *testing.T, builderFunc func() sudoku.SudokuBuilder[D, A]) {
 	for name, rules := range tests {

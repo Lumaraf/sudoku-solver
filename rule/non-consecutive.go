@@ -4,7 +4,7 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-type NonConsecutiveRule[D sudoku.Digits[D], A sudoku.Area] struct{}
+type NonConsecutiveRule[D sudoku.Digits[D], A sudoku.Area[A]] struct{}
 
 func (r NonConsecutiveRule[D, A]) Name() string {
 	return "non-consecutive"
@@ -20,7 +20,7 @@ func (r NonConsecutiveRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 		if v < sb.Size() {
 			digits = append(digits, v+1)
 		}
-		masks[v] = sb.InvertDigits(sb.NewDigits(digits...))
+		masks[v] = sb.NewDigits(digits...).Not()
 	}
 
 	sb.AddChangeProcessor(NonConsecutiveChangeProcessor[D, A]{
@@ -35,7 +35,7 @@ func (r NonConsecutiveRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type NonConsecutiveChangeProcessor[D sudoku.Digits[D], A sudoku.Area] struct {
+type NonConsecutiveChangeProcessor[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	masks   map[int]D
 	offsets sudoku.Offsets
 }
@@ -47,7 +47,7 @@ func (p NonConsecutiveChangeProcessor[D, A]) Name() string {
 func (p NonConsecutiveChangeProcessor[D, A]) ProcessChange(s sudoku.Sudoku[D, A], cell sudoku.CellLocation, mask D) error {
 	combinedMask := s.NewDigits()
 	for v := range mask.Values {
-		combinedMask = s.UnionDigits(combinedMask, p.masks[v])
+		combinedMask = combinedMask.Or(p.masks[v])
 	}
 	for _, l := range s.NewAreaFromOffsets(cell, p.offsets).Locations {
 		if err := s.Mask(l, combinedMask); err != nil {

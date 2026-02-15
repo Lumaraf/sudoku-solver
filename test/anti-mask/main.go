@@ -84,7 +84,7 @@ func main() {
 	//}
 }
 
-type NeighborMaskRule[D sudoku.Digits[D], A sudoku.Area] struct {
+type NeighborMaskRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	fn func(a, b int) bool
 }
 
@@ -105,7 +105,7 @@ func (r NeighborMaskRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type NeighborMaskChangeProcessor[D sudoku.Digits[D], A sudoku.Area] struct {
+type NeighborMaskChangeProcessor[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	masks map[int]D
 }
 
@@ -116,7 +116,7 @@ func (cp NeighborMaskChangeProcessor[D, A]) Name() string {
 func (cp NeighborMaskChangeProcessor[D, A]) ProcessChange(s sudoku.Sudoku[D, A], cell sudoku.CellLocation, mask D) error {
 	combinedMask := s.NewDigits()
 	for v := range mask.Values {
-		combinedMask = s.UnionDigits(combinedMask, cp.masks[v])
+		combinedMask = combinedMask.Or(cp.masks[v])
 	}
 	targetArea := s.NewAreaFromOffsets(cell, sudoku.Offsets{
 		{Row: -1, Col: 0},
@@ -136,14 +136,14 @@ func (cp NeighborMaskChangeProcessor[D, A]) ProcessChange(s sudoku.Sudoku[D, A],
 	return nil
 }
 
-type AntiMagicRule[D sudoku.Digits[D], A sudoku.Area] struct{}
+type AntiMagicRule[D sudoku.Digits[D], A sudoku.Area[A]] struct{}
 
 func (r AntiMagicRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	sb.AddValidator(AntiMagicValidator[D, A]{})
 	return nil
 }
 
-type AntiMagicValidator[D sudoku.Digits[D], A sudoku.Area] struct{}
+type AntiMagicValidator[D sudoku.Digits[D], A sudoku.Area[A]] struct{}
 
 func (v AntiMagicValidator[D, A]) Name() string {
 	return "AntiMagicValidator"
@@ -151,7 +151,7 @@ func (v AntiMagicValidator[D, A]) Name() string {
 
 func (v AntiMagicValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 	for a := range iterateMagicSets(s) {
-		a = s.IntersectAreas(a, s.SolvedArea())
+		a = a.And(s.SolvedArea())
 		if a.Size() != 3 {
 			continue
 		}
@@ -168,7 +168,7 @@ func (v AntiMagicValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 	return nil
 }
 
-func iterateMagicSets[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) func(yield func(area A) bool) {
+func iterateMagicSets[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) func(yield func(area A) bool) {
 	return func(yield func(area A) bool) {
 		for row := 0; row < s.Size(); row++ {
 			for col := 0; col < s.Size(); col++ {
@@ -205,7 +205,7 @@ func iterateMagicSets[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) 
 	}
 }
 
-func getTetrisShapes[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder[D, A]) []sudoku.Offsets {
+func getTetrisShapes[D sudoku.Digits[D], A sudoku.Area[A]](sb sudoku.SudokuBuilder[D, A]) []sudoku.Offsets {
 	shapes := map[A]sudoku.Offsets{}
 
 	shapeFromString := func(rows ...string) {
@@ -279,7 +279,7 @@ func getTetrisShapes[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder[
 	return result
 }
 
-func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder[D, A]) func(func(A) bool) {
+func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area[A]](sb sudoku.SudokuBuilder[D, A]) func(func(A) bool) {
 	shapes := getTetrisShapes(sb)
 	rand.Shuffle(len(shapes), func(i, j int) {
 		shapes[i], shapes[j] = shapes[j], shapes[i]
@@ -295,17 +295,17 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder
 	rising := sb.NewArea()
 	disjointGroups := make([]A, sb.Size())
 	for n := 0; n < sb.Size(); n++ {
-		sb.AreaWith(&falling, sudoku.CellLocation{n, n})
-		sb.AreaWith(&rising, sudoku.CellLocation{sb.Size() - 1 - n, n})
+		falling = falling.With(sudoku.CellLocation{n, n})
+		rising = rising.With(sudoku.CellLocation{sb.Size() - 1 - n, n})
 		for i, l := range sb.Box(n).Locations {
-			sb.AreaWith(&disjointGroups[i], l)
+			disjointGroups[i] = disjointGroups[i].With(l)
 		}
 	}
 	//checkAreas = append(checkAreas, disjointGroups...)
 	//checkAreas = append(checkAreas, falling, rising)
 	check := func(area A) bool {
 		for _, ca := range checkAreas {
-			if sb.IntersectAreas(area, ca).Size() > 4 {
+			if area.And(ca).Size() > 4 {
 				return false
 			}
 		}
@@ -318,25 +318,25 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder
 		return func(yield func(A) bool) {
 			for r := searchRow; r < sb.Size(); r++ {
 				row := sb.Row(r)
-				if sb.IntersectAreas(a, row).Size() < 4 {
+				if a.And(row).Size() < 4 {
 					searchRow = r
 					break
 				}
 			}
 
-			positions := sb.IntersectAreas(sb.Row(searchRow), sb.InvertArea(blocked))
+			positions := sb.Row(searchRow).And(blocked.Not())
 			for !positions.Empty() {
 				l := positions.RandomLocation()
-				sb.AreaWithout(&positions, l)
+				positions = positions.Without(l)
 				for idx, shape := range shapes {
 					if usedShapes[idx] {
 						continue
 					}
 					placement := sb.NewAreaFromOffsets(l, shape)
-					if sb.UnionAreas(blocked, placement).Size() != blocked.Size()+4 {
+					if blocked.Or(placement).Size() != blocked.Size()+4 {
 						continue
 					}
-					newArea := sb.UnionAreas(a, placement)
+					newArea := a.Or(placement)
 					if !check(newArea) {
 						continue
 					}
@@ -346,7 +346,7 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder
 						}
 					} else {
 						usedShapes[idx] = true
-						newBlocked := sb.UnionAreas(blocked, placement)
+						newBlocked := blocked.Or(placement)
 						for result := range findPlacements(newArea, newBlocked, searchRow) {
 							if !yield(result) {
 								return
@@ -360,10 +360,10 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area](sb sudoku.SudokuBuilder
 	}
 
 	blocked := sb.NewArea()
-	sb.AreaWith(&blocked, sudoku.CellLocation{0, 0})
-	sb.AreaWith(&blocked, sudoku.CellLocation{0, 8})
-	sb.AreaWith(&blocked, sudoku.CellLocation{8, 0})
-	sb.AreaWith(&blocked, sudoku.CellLocation{8, 8})
+	blocked = blocked.With(sudoku.CellLocation{0, 0})
+	blocked = blocked.With(sudoku.CellLocation{0, 8})
+	blocked = blocked.With(sudoku.CellLocation{8, 0})
+	blocked = blocked.With(sudoku.CellLocation{8, 8})
 
 	//sb.AreaWith(&blocked, sudoku.CellLocation{3, 4})
 	//sb.AreaWith(&blocked, sudoku.CellLocation{4, 3})

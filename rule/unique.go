@@ -3,6 +3,7 @@ package rule
 import (
 	"errors"
 	"fmt"
+
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -10,12 +11,12 @@ var (
 	ErrTooFewDigits = errors.New("too few available digits in unique set")
 )
 
-type UniqueAreaRule[D sudoku.Digits[D], A sudoku.Area] struct {
+type UniqueAreaRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	name string
 	area A
 }
 
-func NewUniqueAreaRule[D sudoku.Digits[D], A sudoku.Area](name string, area A) UniqueAreaRule[D, A] {
+func NewUniqueAreaRule[D sudoku.Digits[D], A sudoku.Area[A]](name string, area A) UniqueAreaRule[D, A] {
 	return UniqueAreaRule[D, A]{
 		name: name,
 		area: area,
@@ -41,7 +42,7 @@ func (r UniqueAreaRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type ClassicRules[D sudoku.Digits[D], A sudoku.Area] struct{}
+type ClassicRules[D sudoku.Digits[D], A sudoku.Area[A]] struct{}
 
 func (r ClassicRules[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	rules := make(sudoku.Rules[D, A], 0, sb.Size()*3)
@@ -60,7 +61,7 @@ func (r ClassicRules[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return sb.Use(rules...)
 }
 
-type DiagonalRule[D sudoku.Digits[D], A sudoku.Area] struct{}
+type DiagonalRule[D sudoku.Digits[D], A sudoku.Area[A]] struct{}
 
 func (r DiagonalRule[D, A]) Name() string {
 	return "diagonal"
@@ -70,8 +71,8 @@ func (r DiagonalRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	falling := sb.NewArea()
 	rising := sb.NewArea()
 	for n := 0; n < sb.Size(); n++ {
-		sb.AreaWith(&falling, sudoku.CellLocation{n, n})
-		sb.AreaWith(&rising, sudoku.CellLocation{sb.Size() - 1 - n, n})
+		falling = falling.With(sudoku.CellLocation{n, n})
+		rising = rising.With(sudoku.CellLocation{sb.Size() - 1 - n, n})
 	}
 	return sb.Use(
 		NewUniqueAreaRule[D, A]("falling diagonal", falling),
@@ -79,7 +80,7 @@ func (r DiagonalRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	)
 }
 
-type DisjointGroupsRule[D sudoku.Digits[D], A sudoku.Area] struct{}
+type DisjointGroupsRule[D sudoku.Digits[D], A sudoku.Area[A]] struct{}
 
 func (r DisjointGroupsRule[D, A]) Name() string {
 	return "disjoint groups"
@@ -89,7 +90,7 @@ func (r DisjointGroupsRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	groups := make([]A, sb.Size())
 	for box := 0; box < sb.Size(); box++ {
 		for n, l := range sb.Box(box).Locations {
-			sb.AreaWith(&groups[n], l)
+			groups[n] = groups[n].With(l)
 		}
 	}
 
@@ -100,7 +101,7 @@ func (r DisjointGroupsRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return sb.Use(rules...)
 }
 
-type UniqueRestriction[D sudoku.Digits[D], A sudoku.Area] struct {
+type UniqueRestriction[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	name string
 	area A
 }
@@ -113,7 +114,7 @@ func (r UniqueRestriction[D, A]) Area() A {
 	return r.area
 }
 
-type UniqueValidator[D sudoku.Digits[D], A sudoku.Area] struct {
+type UniqueValidator[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	name string
 	area A
 }
@@ -126,7 +127,7 @@ func (v UniqueValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 	mask := s.NewDigits()
 	for _, cell := range v.area.Locations {
 		d := s.Get(cell)
-		mask = s.UnionDigits(mask, d)
+		mask = mask.Or(d)
 	}
 	if mask.Count() < v.area.Size() {
 		return ErrTooFewDigits

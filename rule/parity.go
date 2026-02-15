@@ -7,11 +7,11 @@ var (
 	parityOdd  = 1
 )
 
-type ParityRule[D sudoku.Digits[D], A sudoku.Area] struct {
+type ParityRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	parities map[sudoku.CellLocation]int
 }
 
-func ParityFromString[D sudoku.Digits[D], A sudoku.Area](rows ...string) ParityRule[D, A] {
+func ParityFromString[D sudoku.Digits[D], A sudoku.Area[A]](rows ...string) ParityRule[D, A] {
 	parities := make(map[sudoku.CellLocation]int)
 	for row, rowContent := range rows {
 		for col, cellContent := range rowContent {

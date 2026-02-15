@@ -2,11 +2,11 @@ package rule
 
 import "github.com/lumaraf/sudoku-solver/sudoku"
 
-type GivenDigits[D sudoku.Digits[D], A sudoku.Area] struct {
+type GivenDigits[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	givenDigits map[sudoku.CellLocation]int
 }
 
-func GivenDigitsFromString[D sudoku.Digits[D], A sudoku.Area](rows ...string) GivenDigits[D, A] {
+func GivenDigitsFromString[D sudoku.Digits[D], A sudoku.Area[A]](rows ...string) GivenDigits[D, A] {
 	givenDigits := make(map[sudoku.CellLocation]int)
 	for row, rowContent := range rows {
 		for col, cellContent := range rowContent {

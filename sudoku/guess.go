@@ -5,12 +5,12 @@ import (
 	"errors"
 )
 
-type GuessSelector[D Digits[D], A Area] func(s Sudoku[D, A]) (CellLocation, Values)
+type GuessSelector[D Digits[D], A Area[A]] func(s Sudoku[D, A]) (CellLocation, Values)
 
-func DefaultGuessSelector[D Digits[D], A Area](s Sudoku[D, A]) (CellLocation, Values) {
+func DefaultGuessSelector[D Digits[D], A Area[A]](s Sudoku[D, A]) (CellLocation, Values) {
 	bestCell := CellLocation{}
 	bestDigits := s.NewDigits()
-	for _, cell := range s.InvertArea(s.SolvedArea()).Locations {
+	for _, cell := range s.SolvedArea().Not().Locations {
 		d := s.Get(cell)
 		if d.Count() == 1 {
 			continue
@@ -23,12 +23,12 @@ func DefaultGuessSelector[D Digits[D], A Area](s Sudoku[D, A]) (CellLocation, Va
 	return bestCell, bestDigits.Values
 }
 
-type Guesser[D Digits[D], A Area] interface {
+type Guesser[D Digits[D], A Area[A]] interface {
 	Solver[D, A]
 	Guess(g GuessSelector[D, A], ctx context.Context) func(func(Sudoku[D, A]) bool)
 }
 
-type guesser[D Digits[D], A Area, G comparable, S size[D, A, G]] struct {
+type guesser[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
 	*solver[D, A, G, S]
 }
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-type MultiSudokuBuilder[D Digits[D], A Area] struct {
+type MultiSudokuBuilder[D Digits[D], A Area[A]] struct {
 	sudokus  []Sudoku[D, A]
 	builders []SudokuBuilder[D, A]
 }
@@ -57,7 +57,7 @@ func (b *MultiSudokuBuilder[D, A]) Overlap(sb1 SudokuBuilder[D, A], corner CellL
 	return nil
 }
 
-type MultiSudoku[D Digits[D], A Area] struct {
+type MultiSudoku[D Digits[D], A Area[A]] struct {
 	sudokus []Sudoku[D, A]
 }
 
@@ -98,7 +98,7 @@ func (ms *MultiSudoku[D, A]) IsSolved() bool {
 	return true
 }
 
-type overlapChangeProcessor[D Digits[D], A Area] struct {
+type overlapChangeProcessor[D Digits[D], A Area[A]] struct {
 	targetSudoku Sudoku[D, A]
 	offset       Offset
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // removes options from cells in unique areas if they are forced into an intersection with another unique area
-func UniqueIntersectionStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func UniqueIntersectionStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
@@ -16,22 +16,22 @@ func UniqueIntersectionStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudo
 
 		for r2 := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 			a2 := r2.Area()
-			if s.IntersectAreas(a, a2).Empty() || a == a2 {
+			if a.And(a2).Empty() || a == a2 {
 				continue
 			}
 
 			strategies = append(strategies, UniqueIntersectionStrategy[D, A]{
-				area:         s.UnionAreas(a, a2),
-				source:       s.IntersectAreas(a, s.InvertArea(a2)),
-				intersection: s.IntersectAreas(a, a2),
-				target:       s.IntersectAreas(a2, s.InvertArea(a)),
+				area:         a.Or(a2),
+				source:       a.And(a2.Not()),
+				intersection: a.And(a2),
+				target:       a2.And(a.Not()),
 			})
 		}
 	}
 	return strategies
 }
 
-type UniqueIntersectionStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type UniqueIntersectionStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area         A
 	source       A
 	intersection A
@@ -51,17 +51,17 @@ func (st UniqueIntersectionStrategy[D, A]) AreaFilter() A {
 }
 
 func (st UniqueIntersectionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
-	st.intersection = s.UnionAreas(st.intersection, s.InvertArea(s.SolvedArea()))
+	st.intersection = st.intersection.Or(s.SolvedArea().Not())
 	if st.intersection.Empty() {
 		return nil, nil
 	}
 
 	var d D
 	for _, l := range st.intersection.Locations {
-		d = s.UnionDigits(d, s.Get(l))
+		d = d.Or(s.Get(l))
 	}
 	for _, l := range st.source.Locations {
-		d = s.IntersectDigits(d, s.InvertDigits(s.Get(l)))
+		d = d.And(s.Get(l).Not())
 	}
 
 	if d.Empty() {

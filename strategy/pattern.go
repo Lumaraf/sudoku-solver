@@ -6,7 +6,7 @@ import (
 )
 
 // finds all possible placement patterns for every digit and overlays them to eliminate impossible options
-func PatternOverlayStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func PatternOverlayStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	requiredAreas := make([]A, 0, s.Size()*3)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
@@ -16,12 +16,12 @@ func PatternOverlayStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.S
 	}
 
 	return []sudoku.Strategy[D, A]{PatternOverlayStrategy[D, A]{
-		area:          s.InvertArea(s.NewArea()),
+		area:          s.NewArea().Not(),
 		requiredAreas: requiredAreas,
 	}}
 }
 
-type PatternOverlayStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type PatternOverlayStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area          A
 	requiredAreas []A
 	extraAreas    []A
@@ -48,7 +48,7 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.St
 				Col: col,
 			}
 			for v := range s.Get(l).Values {
-				s.AreaWith(&valueAreas[v-1], l)
+				valueAreas[v-1] = valueAreas[v-1].With(l)
 			}
 		}
 	}
@@ -72,14 +72,14 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.St
 	// overlay patterns and eliminate impossible options
 	patternUnions := make([]A, s.Size())
 	for vp := range st.findValidPatterns(s, s.NewArea(), valuePatterns) {
-		patternUnions[vp.value-1] = s.UnionAreas(patternUnions[vp.value-1], vp.area)
+		patternUnions[vp.value-1] = patternUnions[vp.value-1].Or(vp.area)
 	}
 
 	changes := make(map[sudoku.CellLocation]D, s.Size())
 	for v, area := range patternUnions {
-		eliminationArea := s.IntersectAreas(valueAreas[v], s.InvertArea(area))
+		eliminationArea := valueAreas[v].And(area.Not())
 		for _, l := range eliminationArea.Locations {
-			changes[l] = s.UnionDigits(changes[l], s.NewDigits(v+1))
+			changes[l] = changes[l].Or(s.NewDigits(v + 1))
 		}
 	}
 
@@ -92,7 +92,7 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.St
 	return sudoku.Strategies[D, A]{st}, nil
 }
 
-type valuePattern[A sudoku.Area] struct {
+type valuePattern[A sudoku.Area[A]] struct {
 	value int
 	area  A
 }
@@ -104,9 +104,9 @@ func (st PatternOverlayStrategy[D, A]) findPlacementPatterns(s sudoku.Sudoku[D, 
 			return
 		}
 
-		intersection := s.IntersectAreas(valueArea, requiredAreas[0])
+		intersection := valueArea.And(requiredAreas[0])
 		for _, l := range intersection.Locations {
-			candidateArea := s.IntersectAreas(valueArea, s.InvertArea(s.GetExclusionArea(l)))
+			candidateArea := valueArea.And(s.GetExclusionArea(l).Not())
 			if candidateArea.Size() < s.Size() {
 				continue
 			}
@@ -122,7 +122,7 @@ func (st PatternOverlayStrategy[D, A]) findPlacementPatterns(s sudoku.Sudoku[D, 
 func (st PatternOverlayStrategy[D, A]) findValidPatterns(s sudoku.Sudoku[D, A], pattern A, valuePatterns [][]valuePattern[A]) func(func(valuePattern[A]) bool) {
 	return func(yield func(valuePattern[A]) bool) {
 		for _, otherPattern := range valuePatterns[0] {
-			intersection := s.IntersectAreas(pattern, otherPattern.area)
+			intersection := pattern.And(otherPattern.area)
 			if !intersection.Empty() {
 				continue
 			}
@@ -131,7 +131,7 @@ func (st PatternOverlayStrategy[D, A]) findValidPatterns(s sudoku.Sudoku[D, A], 
 			if len(valuePatterns) == 1 {
 				matched = true
 			} else {
-				for vp := range st.findValidPatterns(s, s.UnionAreas(pattern, otherPattern.area), valuePatterns[1:]) {
+				for vp := range st.findValidPatterns(s, pattern.Or(otherPattern.area), valuePatterns[1:]) {
 					matched = true
 					if !yield(vp) {
 						return

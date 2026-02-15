@@ -15,14 +15,14 @@ const (
 	DIFFICULTY_IMPOSSIBLE
 )
 
-type Strategy[D Digits[D], A Area] interface {
+type Strategy[D Digits[D], A Area[A]] interface {
 	Name() string
 	Difficulty() Difficulty
 	Solve(s Sudoku[D, A]) ([]Strategy[D, A], error)
 	AreaFilter() A
 }
 
-type Strategies[D Digits[D], A Area] []Strategy[D, A]
+type Strategies[D Digits[D], A Area[A]] []Strategy[D, A]
 
 func (s Strategies[D, A]) Len() int {
 	return len(s)
@@ -36,17 +36,17 @@ func (s Strategies[D, A]) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-type StrategyFactory[D Digits[D], A Area] interface {
+type StrategyFactory[D Digits[D], A Area[A]] interface {
 	For(s Sudoku[D, A]) []Strategy[D, A]
 }
 
-type StrategyFactoryFunc[D Digits[D], A Area] func(s Sudoku[D, A]) []Strategy[D, A]
+type StrategyFactoryFunc[D Digits[D], A Area[A]] func(s Sudoku[D, A]) []Strategy[D, A]
 
 func (sff StrategyFactoryFunc[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
 	return sff(s)
 }
 
-type StrategyFactories[D Digits[D], A Area] []StrategyFactory[D, A]
+type StrategyFactories[D Digits[D], A Area[A]] []StrategyFactory[D, A]
 
 func (sf StrategyFactories[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
 	strategies := make([]Strategy[D, A], 0, len(sf))
@@ -56,13 +56,13 @@ func (sf StrategyFactories[D, A]) For(s Sudoku[D, A]) []Strategy[D, A] {
 	return strategies
 }
 
-type Solver[D Digits[D], A Area] interface {
+type Solver[D Digits[D], A Area[A]] interface {
 	SetChainLimit(limit int)
 	Use(factories ...StrategyFactory[D, A])
 	Solve(ctx context.Context) error
 }
 
-type solver[D Digits[D], A Area, G comparable, S size[D, A, G]] struct {
+type solver[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
 	sudoku            *sudoku[D, A, G, S]
 	chainLimit        int
 	strategyFactories []StrategyFactory[D, A]
@@ -105,7 +105,7 @@ func (slv *solver[D, A, G, S]) solve(s *sudoku[D, A, G, S], solvers []Strategy[D
 		if s.nextChanged.Empty() && slv.chainLimit > 0 {
 			s.stats.ExclusionChainRuns++
 			for limit := 1; limit <= slv.chainLimit; limit++ {
-				if err := slv.solveExclusionChain(s, s.InvertArea(s.solved), limit); err != nil {
+				if err := slv.solveExclusionChain(s, s.solved.Not(), limit); err != nil {
 					return solvers, err
 				}
 				if !s.nextChanged.Empty() {
@@ -134,7 +134,7 @@ func (slv *solver[D, A, G, S]) runSolvers(s *sudoku[D, A, G, S], strategies []St
 		}
 		lastDifficulty = strategy.Difficulty()
 
-		if !s.IntersectAreas(strategy.AreaFilter(), s.changed).Empty() {
+		if !strategy.AreaFilter().And(s.changed).Empty() {
 			s.stats.SolverRuns++
 			cellUpdatesBefore := s.stats.CellUpdates
 			s.logger.EnterContext(strategy)
@@ -175,7 +175,7 @@ func (slv *solver[D, A, G, S]) solveExclusionChain(s *sudoku[D, A, G, S], area A
 				err = clone.Validate()
 			}
 			if err == nil && levels > 1 {
-				err = slv.solveExclusionChain(&clone, s.IntersectAreas(clone.nextChanged, s.InvertArea(clone.solved)), levels-1)
+				err = slv.solveExclusionChain(&clone, clone.nextChanged.And(clone.solved.Not()), levels-1)
 			}
 
 			if err != nil {
@@ -194,7 +194,7 @@ func (slv *solver[D, A, G, S]) solveExclusionChain(s *sudoku[D, A, G, S], area A
 }
 
 func (s *sudoku[D, A, G, S]) setSolved(l CellLocation) {
-	s.AreaWith(&s.solved, l)
+	s.solved = s.solved.With(l)
 }
 
 func (s *sudoku[D, A, G, S]) IsSolved() bool {

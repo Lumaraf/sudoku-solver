@@ -3,11 +3,12 @@ package strategy
 import (
 	"errors"
 	"fmt"
+
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-func KillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func KillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	allMasks := generateAreaSumMasks(s)
 
 	strategies := sudoku.Strategies[D, A]{}
@@ -34,7 +35,7 @@ func KillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudok
 	return strategies
 }
 
-type KillerCageStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type KillerCageStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area  A
 	masks []D
 }
@@ -52,7 +53,7 @@ func (st KillerCageStrategy[D, A]) AreaFilter() A {
 }
 
 func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
-	area := s.IntersectAreas(st.area, s.InvertArea(s.SolvedArea()))
+	area := st.area.And(s.SolvedArea().Not())
 	if area.Empty() {
 		return nil, nil
 	}
@@ -63,7 +64,7 @@ func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strate
 	for _, m := range st.masks {
 		if st.isMaskPlaceable(s, st.area, m) {
 			masks = append(masks, m)
-			forcedDigits = s.IntersectDigits(forcedDigits, m)
+			forcedDigits = forcedDigits.And(m)
 		}
 	}
 	if len(masks) == 0 {
@@ -73,11 +74,11 @@ func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strate
 
 	// eliminate forced digits from other areas
 	for v := range forcedDigits.Values {
-		exclusionArea := s.InvertArea(st.area)
+		exclusionArea := st.area.Not()
 		for _, l := range area.Locations {
 			d := s.Get(l)
 			if d.CanContain(v) {
-				exclusionArea = s.IntersectAreas(exclusionArea, s.GetExclusionArea(l))
+				exclusionArea = exclusionArea.And(s.GetExclusionArea(l))
 			}
 		}
 		for _, l := range exclusionArea.Locations {
@@ -104,8 +105,7 @@ func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strate
 }
 
 func (st KillerCageStrategy[D, A]) isValuePlaceable(s sudoku.Sudoku[D, A], l sudoku.CellLocation, v int) bool {
-	area := st.area
-	s.AreaWithout(&area, l)
+	area := st.area.Without(l)
 	for _, m := range st.masks {
 		if !m.CanContain(v) {
 			continue
@@ -113,7 +113,7 @@ func (st KillerCageStrategy[D, A]) isValuePlaceable(s sudoku.Sudoku[D, A], l sud
 		if area.Empty() {
 			return true
 		}
-		m = s.IntersectDigits(m, s.InvertDigits(s.NewDigits(v)))
+		m = m.Without(v)
 		if st.isMaskPlaceable(s, area, m) {
 			return true
 		}
@@ -124,13 +124,12 @@ func (st KillerCageStrategy[D, A]) isValuePlaceable(s sudoku.Sudoku[D, A], l sud
 func (st KillerCageStrategy[D, A]) isMaskPlaceable(s sudoku.Sudoku[D, A], area A, mask D) bool {
 	for _, l := range area.Locations {
 		d := s.Get(l)
-		for v := range s.IntersectDigits(d, mask).Values {
-			nextArea := area
-			s.AreaWithout(&nextArea, l)
+		for v := range d.And(mask).Values {
+			nextArea := area.Without(l)
 			if nextArea.Empty() {
 				return true
 			}
-			nextMask := s.IntersectDigits(mask, s.InvertDigits(s.NewDigits(v)))
+			nextMask := mask.And(s.NewDigits(v).Not())
 			if st.isMaskPlaceable(s, nextArea, nextMask) {
 				return true
 			}
@@ -142,7 +141,7 @@ func (st KillerCageStrategy[D, A]) isMaskPlaceable(s sudoku.Sudoku[D, A], area A
 
 var areaSumMasksCache = map[int]any{}
 
-func generateAreaSumMasks[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) map[int][]D {
+func generateAreaSumMasks[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) map[int][]D {
 	if cache, ok := areaSumMasksCache[s.Size()].(map[int][]D); ok {
 		return cache
 	}

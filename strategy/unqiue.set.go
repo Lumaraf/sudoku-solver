@@ -6,7 +6,7 @@ import (
 )
 
 // checks unique areas for complete sets of digits and removes those from other cells in the area
-func UniqueSetStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func UniqueSetStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		strategies = append(strategies, UniqueSetStrategy[D, A]{
@@ -16,7 +16,7 @@ func UniqueSetStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku
 	return strategies
 }
 
-type UniqueSetStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type UniqueSetStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	Area A
 }
 
@@ -37,7 +37,7 @@ func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strateg
 	for _, cell := range st.Area.Locations {
 		d := s.Get(cell)
 		if d.Count() == 1 {
-			s.AreaWithout(&st.Area, cell)
+			st.Area = st.Area.Without(cell)
 			continue
 		}
 		cells = append(cells, d)
@@ -58,15 +58,15 @@ func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strateg
 		}, nil
 	}
 
-	mask := s.InvertDigits(bestSet)
+	mask := bestSet.Not()
 	inSet := s.NewArea()
 	notInSet := s.NewArea()
 	for _, cell := range st.Area.Locations {
 		d := s.Get(cell)
-		if s.IntersectDigits(d, mask).Empty() {
-			s.AreaWith(&inSet, cell)
+		if d.And(mask).Empty() {
+			inSet = inSet.With(cell)
 		} else {
-			s.AreaWith(&notInSet, cell)
+			notInSet = notInSet.With(cell)
 			if err := s.RemoveMask(cell, bestSet); err != nil {
 				return nil, err
 			}
@@ -86,7 +86,7 @@ func (st UniqueSetStrategy[D, A]) findSets(s sudoku.Sudoku[D, A], contents []D, 
 	return func(yield func(D) bool) {
 		count++
 		for i, d := range contents {
-			combined := s.UnionDigits(mask, d)
+			combined := mask.Or(d)
 			if combined.Count() == count {
 				if !yield(combined) {
 					return

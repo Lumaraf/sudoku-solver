@@ -5,7 +5,7 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-func XWingStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func XWingStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	areas := make(map[A]bool, s.Size()*2)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		areas[r.Area()] = true
@@ -29,7 +29,7 @@ func XWingStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, 
 	return nil
 }
 
-type XWingStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type XWingStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area A
 	rows []int
 	cols []int
@@ -46,7 +46,7 @@ func (st XWingStrategy[D, A]) Difficulty() sudoku.Difficulty {
 func (slv XWingStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
 	rows := make([]int, 0, len(slv.rows))
 	for _, row := range slv.rows {
-		if !s.IntersectAreas(s.Row(row), s.InvertArea(s.SolvedArea())).Empty() {
+		if !s.Row(row).And(s.SolvedArea().Not()).Empty() {
 			rows = append(rows, row)
 		}
 	}
@@ -54,7 +54,7 @@ func (slv XWingStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D
 
 	cols := make([]int, 0, len(slv.cols))
 	for _, col := range slv.cols {
-		if !s.IntersectAreas(s.Column(col), s.InvertArea(s.SolvedArea())).Empty() {
+		if !s.Column(col).And(s.SolvedArea().Not()).Empty() {
 			cols = append(cols, col)
 		}
 	}
@@ -108,7 +108,7 @@ func (slv XWingStrategy[D, A]) findXWing(s sudoku.Sudoku[D, A], digit int) bool 
 
 func (slv XWingStrategy[D, A]) findCandidateCols(s sudoku.Sudoku[D, A], row, digit int) []int {
 	cols := make([]int, 0, 2)
-	for _, l := range s.InvertArea(s.IntersectAreas(s.Row(row), s.Column(digit))).Locations {
+	for _, l := range s.Row(row).And(s.Column(digit)).Not().Locations {
 		if s.Get(l).CanContain(digit) {
 			cols = append(cols, l.Col)
 		}
@@ -118,7 +118,7 @@ func (slv XWingStrategy[D, A]) findCandidateCols(s sudoku.Sudoku[D, A], row, dig
 
 func (slv XWingStrategy[D, A]) findCandidateRows(s sudoku.Sudoku[D, A], col, digit int) []int {
 	rows := make([]int, 0, 2)
-	for _, l := range s.InvertArea(s.IntersectAreas(s.Column(col), s.SolvedArea())).Locations {
+	for _, l := range s.Column(col).And(s.SolvedArea()).Not().Locations {
 		if s.Get(l).CanContain(digit) {
 			rows = append(rows, l.Row)
 		}

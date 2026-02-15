@@ -1,12 +1,13 @@
 package sudoku
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSetAndGet(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9[Digits9], size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}
@@ -18,7 +19,7 @@ func TestSetAndGet(t *testing.T) {
 
 	assert.Equal(t, Area9x9{}, s.NextChangedArea())
 	assert.NoError(t, s.Set(loc, 5))
-	assert.Equal(t, s.NewArea().with(loc, true), s.NextChangedArea())
+	assert.Equal(t, s.NewArea().With(loc), s.NextChangedArea())
 
 	assert.Equal(t, s.NewDigits(5), s.Get(loc))
 
@@ -29,7 +30,7 @@ func TestSetAndGet(t *testing.T) {
 }
 
 func TestRemoveOption(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9[Digits9], size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}
@@ -39,7 +40,7 @@ func TestRemoveOption(t *testing.T) {
 
 	assert.Equal(t, Area9x9{}, s.NextChangedArea())
 	assert.NoError(t, s.RemoveOption(loc, 5))
-	assert.Equal(t, s.NewArea().with(loc, true), s.NextChangedArea())
+	assert.Equal(t, s.NewArea().With(loc), s.NextChangedArea())
 
 	assert.Equal(t, s.NewDigits(1, 2, 3, 4, 6, 7, 8, 9), s.Get(loc))
 
@@ -49,7 +50,7 @@ func TestRemoveOption(t *testing.T) {
 }
 
 func TestMask(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9[Digits9], size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
 	s.changeProcessors = append(s.changeProcessors, SolveProcessors[Digits9, Area9x9]{})
 	s.nextChanged = Area9x9{}
 
@@ -58,7 +59,7 @@ func TestMask(t *testing.T) {
 	assert.Equal(t, Area9x9{}, s.NextChangedArea())
 	assert.NoError(t, s.Mask(loc, s.NewDigits(1, 2, 3)))
 	assert.Equal(t, s.NewDigits(1, 2, 3), s.Get(loc))
-	assert.Equal(t, s.NewArea().with(loc, true), s.NextChangedArea())
+	assert.Equal(t, s.NewArea().With(loc), s.NextChangedArea())
 
 	assert.NoError(t, s.Mask(loc, s.NewDigits(2, 3, 4, 5)))
 	assert.Equal(t, s.NewDigits(2, 3), s.Get(loc))
@@ -66,21 +67,21 @@ func TestMask(t *testing.T) {
 	assert.Equal(t, Area9x9{}, s.SolvedArea())
 	assert.NoError(t, s.Mask(loc, s.NewDigits(3, 4, 5)))
 	assert.Equal(t, s.NewDigits(3), s.Get(loc))
-	assert.Equal(t, s.NewArea().with(loc, true), s.SolvedArea())
+	assert.Equal(t, s.NewArea().With(loc), s.SolvedArea())
 
 	assert.Error(t, s.Mask(loc, s.NewDigits(1, 4, 5)))
 	assert.Equal(t, s.NewDigits(3), s.Get(loc))
 }
 
 func TestRemoveMask(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9[Digits9], size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}
 
 	assert.NoError(t, s.RemoveMask(loc, s.NewDigits(1, 2)))
 	assert.Equal(t, s.NewDigits(3, 4, 5, 6, 7, 8, 9), s.Get(loc))
-	assert.Equal(t, s.NewArea().with(loc, true), s.NextChangedArea())
+	assert.Equal(t, s.NewArea().With(loc), s.NextChangedArea())
 
 	assert.NoError(t, s.RemoveMask(loc, s.NewDigits(8, 9)))
 	assert.Equal(t, s.NewDigits(3, 4, 5, 6, 7), s.Get(loc))

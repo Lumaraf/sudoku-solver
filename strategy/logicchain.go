@@ -5,13 +5,13 @@ import (
 )
 
 // checks if values in a cell would break a rule
-func LogicChainStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func LogicChainStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	return []sudoku.Strategy[D, A]{LogicChainStrategy[D, A]{
-		s.InvertArea(s.NewArea()),
+		s.NewArea().Not(),
 	}}
 }
 
-type LogicChainStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type LogicChainStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area A
 }
 

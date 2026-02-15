@@ -5,7 +5,7 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
-func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	allMasks := generateAreaSumMasks(s)
 	strategies := sudoku.Strategies[D, A]{}
 
@@ -25,9 +25,9 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku
 
 		hits := 0
 		for _, r2 := range areaSumRestrictions {
-			if s.UnionAreas(baseArea, r2.Area()).Size() == baseArea.Size() {
+			if baseArea.Or(r2.Area()).Size() == baseArea.Size() {
 				hits++
-				baseArea = s.IntersectAreas(baseArea, s.InvertArea(r2.Area()))
+				baseArea = baseArea.And(r2.Area().Not())
 				baseSum -= r2.Sum()
 			}
 		}
@@ -51,8 +51,8 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku
 
 			// check for inverted cage
 			for _, r2 := range areaSumRestrictions {
-				if s.IntersectAreas(baseArea, s.InvertArea(r2.Area())).Empty() {
-					area := s.IntersectAreas(r2.Area(), s.InvertArea(baseArea))
+				if baseArea.And(r2.Area().Not()).Empty() {
+					area := r2.Area().And(baseArea.Not())
 					if !area.Empty() {
 						masks := make([]D, 0)
 						for _, m := range allMasks[r2.Sum()-baseSum] {
@@ -73,12 +73,12 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku
 	return strategies
 }
 
-func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) func(func(A) bool) {
+func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) func(func(A) bool) {
 	var combineAreas func(current A, uniqueAreas []A) func(func(A) bool)
 	combineAreas = func(current A, ua []A) func(func(A) bool) {
 		return func(yield func(A) bool) {
 			for _, a := range ua {
-				if s.UnionAreas(current, a).Size() != current.Size()+a.Size() {
+				if current.Or(a).Size() != current.Size()+a.Size() {
 					continue
 				}
 
@@ -86,7 +86,7 @@ func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A
 					continue
 				}
 
-				union := s.UnionAreas(current, a)
+				union := current.Or(a)
 				if !yield(union) {
 					return
 				}
@@ -110,7 +110,7 @@ func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A
 	return combineAreas(s.NewArea(), uniqueAreas)
 }
 
-func areasTouch[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A], a1, a2 A) bool {
+func areasTouch[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A], a1, a2 A) bool {
 	offsets := sudoku.Offsets{
 		sudoku.Offset{Row: -1, Col: 0},
 		sudoku.Offset{Row: 0, Col: -1},

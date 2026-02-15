@@ -7,12 +7,25 @@ import (
 
 var ErrValueOutOfRange = errors.New("value out of range")
 
+type DigitsOps[D Digits[D]] interface {
+	NewDigits(values ...int) D
+	AllDigits() D
+	//IntersectDigits(d1 D, d2 D) D
+	//UnionDigits(d1 D, d2 D) D
+	//InvertDigits(d D) D
+}
+
 type Digits[D Digits[D]] interface {
 	comparable
 
 	And(other D) D
 	Or(other D) D
 	Not() D
+
+	All() D
+
+	With(v int) D
+	Without(v int) D
 
 	CanContain(v int) bool
 	Empty() bool
@@ -25,40 +38,60 @@ type Digits[D Digits[D]] interface {
 
 type Values func(func(int) bool)
 
-type digits_16 struct {
-	v uint16
+type digits_16[AD interface{ allDigits() uint16 }] uint16
+
+func (c digits_16[AD]) And(d digits_16[AD]) digits_16[AD] {
+	return c & d
 }
 
-func (c digits_16) CanContain(v int) bool {
-	return c.v&c.getBit(v) != 0
+func (c digits_16[AD]) Or(d digits_16[AD]) digits_16[AD] {
+	return c | d
 }
 
-func (c digits_16) withOption(v int) digits_16 {
-	return digits_16{v: c.v | c.getBit(v)}
+func (c digits_16[AD]) Not() digits_16[AD] {
+	var ad AD
+	return digits_16[AD](ad.allDigits() & ^uint16(c))
 }
 
-func (c digits_16) Empty() bool {
-	return c.v == 0
+func (c digits_16[AD]) All() digits_16[AD] {
+	var ad AD
+	return digits_16[AD](ad.allDigits())
 }
 
-func (c digits_16) Count() int {
-	return bits.OnesCount16(c.v)
+func (c digits_16[AD]) With(v int) digits_16[AD] {
+	return digits_16[AD](uint16(c) | c.getBit(v))
 }
 
-func (c digits_16) Single() (v int, isSingle bool) {
+func (c digits_16[AD]) Without(v int) digits_16[AD] {
+	return digits_16[AD](uint16(c) & ^c.getBit(v))
+}
+
+func (c digits_16[AD]) CanContain(v int) bool {
+	return uint16(c)&c.getBit(v) != 0
+}
+
+func (c digits_16[AD]) Empty() bool {
+	return c == 0
+}
+
+func (c digits_16[AD]) Count() int {
+	return bits.OnesCount16(uint16(c))
+}
+
+func (c digits_16[AD]) Single() (v int, isSingle bool) {
 	isSingle = c.Count() == 1
 	if isSingle {
-		v = bits.TrailingZeros16(c.v) + 1
+		v = bits.TrailingZeros16(uint16(c)) + 1
 	}
 	return
 }
 
-func (c digits_16) getBit(v int) uint16 {
+func (c digits_16[AD]) getBit(v int) uint16 {
 	return 1 << (v - 1)
 }
 
-func (c digits_16) Values(yield func(int) bool) {
-	mask := c.v
+func (c digits_16[AD]) Values(yield func(int) bool) {
+	mask := uint16(c)
 	for mask != 0 {
 		lz := bits.TrailingZeros16(mask)
 		mask = mask & ^(1 << lz)
@@ -68,25 +101,15 @@ func (c digits_16) Values(yield func(int) bool) {
 	}
 }
 
-func (c digits_16) Min() int {
-	return bits.TrailingZeros16(c.v) + 1
+func (c digits_16[AD]) Min() int {
+	return bits.TrailingZeros16(uint16(c)) + 1
 }
 
-func (c digits_16) Max() int {
-	return 64 - bits.LeadingZeros16(c.v)
+func (c digits_16[AD]) Max() int {
+	return 64 - bits.LeadingZeros16(uint16(c))
 }
 
-func (c digits_16) And(d digits_16) digits_16 {
-	return digits_16{v: c.v & d.v}
-}
-func (c digits_16) Or(d digits_16) digits_16 {
-	return digits_16{v: c.v | d.v}
-}
-func (c digits_16) Not() digits_16 {
-	return digits_16{v: ^c.v}
-}
-
-func (c digits_16) String() string {
+func (c digits_16[AD]) String() string {
 	str := ""
 	for i := 1; i <= 16; i++ {
 		if c.CanContain(i) {
@@ -97,18 +120,4 @@ func (c digits_16) String() string {
 		}
 	}
 	return str
-}
-
-type digitsOps_16 struct{}
-
-func (digitsOps_16) IntersectDigits(d1, d2 digits_16) digits_16 {
-	return d1.And(d2)
-}
-
-func (digitsOps_16) UnionDigits(d1 digits_16, d2 digits_16) digits_16 {
-	return d1.Or(d2)
-}
-
-func (digitsOps_16) InvertDigits(d digits_16) digits_16 {
-	return d.Not()
 }

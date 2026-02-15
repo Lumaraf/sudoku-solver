@@ -6,7 +6,7 @@ import (
 )
 
 // removes options in the puzzle that are excluded by all possible placements of a digit in a unique area
-func UniqueExclusionStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
+func UniqueExclusionStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
@@ -21,7 +21,7 @@ func UniqueExclusionStrategyFactory[D sudoku.Digits[D], A sudoku.Area](s sudoku.
 	return strategies
 }
 
-type UniqueExclusionStrategy[D sudoku.Digits[D], A sudoku.Area] struct {
+type UniqueExclusionStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area A
 }
 
@@ -38,7 +38,7 @@ func (st UniqueExclusionStrategy[D, A]) AreaFilter() A {
 }
 
 func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
-	area := s.IntersectAreas(st.area, s.InvertArea(s.SolvedArea()))
+	area := st.area.And(s.SolvedArea().Not())
 	if area.Empty() {
 		return nil, nil
 	}
@@ -47,12 +47,12 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 	candidates := make([]A, s.Size())
 	for _, l := range area.Locations {
 		for v := range s.Get(l).Values {
-			s.AreaWith(&candidates[v-1], l)
+			candidates[v-1] = candidates[v-1].With(l)
 		}
 	}
 
 	for v, a := range candidates {
-		if s.IntersectAreas(a, s.ChangedArea()).Empty() {
+		if a.And(s.ChangedArea()).Empty() {
 			continue
 		}
 
@@ -64,7 +64,7 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 				if err := s.Set(l, v); err != nil {
 					return err
 				}
-				changed = s.UnionAreas(changed, s.NextChangedArea())
+				changed = changed.Or(s.NextChangedArea())
 				clones = append(clones, s)
 				return nil
 			})
@@ -76,7 +76,7 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 	}
 
 	// by cell
-	for _, l := range s.IntersectAreas(area, s.ChangedArea()).Locations {
+	for _, l := range area.And(s.ChangedArea()).Locations {
 		d := s.Get(l)
 		var changed A
 		clones := make([]sudoku.Sudoku[D, A], 0, d.Count())
@@ -85,7 +85,7 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 				if err := s.Set(l, v); err != nil {
 					return err
 				}
-				changed = s.UnionAreas(changed, s.NextChangedArea())
+				changed = changed.Or(s.NextChangedArea())
 				clones = append(clones, s)
 				return nil
 			})
@@ -100,10 +100,10 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 }
 
 func (st UniqueExclusionStrategy[D, A]) maskChangedCells(s sudoku.Sudoku[D, A], changed A, clones []sudoku.Sudoku[D, A]) error {
-	for _, l := range s.IntersectAreas(changed, s.InvertArea(st.area)).Locations {
+	for _, l := range changed.And(st.area.Not()).Locations {
 		var mask D
 		for _, clone := range clones {
-			mask = s.UnionDigits(mask, clone.Get(l))
+			mask = mask.Or(clone.Get(l))
 		}
 		if err := s.Mask(l, mask); err != nil {
 			return err

@@ -2,6 +2,7 @@ package rule
 
 import (
 	"errors"
+
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -9,7 +10,7 @@ var (
 	ErrInvalidAreaSum = errors.New("invalid area sum")
 )
 
-func KillerCageRulesFromString[D sudoku.Digits[D], A sudoku.Area](grid []string, sums map[rune]int) sudoku.Rules[D, A] {
+func KillerCageRulesFromString[D sudoku.Digits[D], A sudoku.Area[A]](grid []string, sums map[rune]int) sudoku.Rules[D, A] {
 	cages := make(map[rune][]sudoku.CellLocation)
 	for row, rowContent := range grid {
 		for col, cellContent := range rowContent {
@@ -33,7 +34,7 @@ func KillerCageRulesFromString[D sudoku.Digits[D], A sudoku.Area](grid []string,
 	return rules
 }
 
-type KillerCageRule[D sudoku.Digits[D], A sudoku.Area] struct {
+type KillerCageRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	Area []sudoku.CellLocation
 	Sum  int
 }
@@ -47,7 +48,7 @@ func (r KillerCageRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return sb.Use(NewUniqueAreaRule[D, A]("killer cage", area))
 }
 
-type AreaSumRule[D sudoku.Digits[D], A sudoku.Area] struct {
+type AreaSumRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	Area []sudoku.CellLocation
 	Sum  int
 }
@@ -61,7 +62,7 @@ func (r AreaSumRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type AreaSumRestriction[D sudoku.Digits[D], A sudoku.Area] struct {
+type AreaSumRestriction[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 	area A
 	sum  int
 }

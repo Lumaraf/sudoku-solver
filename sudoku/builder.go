@@ -1,10 +1,10 @@
 package sudoku
 
-type Rule[D Digits[D], A Area] interface {
+type Rule[D Digits[D], A Area[A]] interface {
 	Apply(s SudokuBuilder[D, A]) error
 }
 
-type Rules[D Digits[D], A Area] []Rule[D, A]
+type Rules[D Digits[D], A Area[A]] []Rule[D, A]
 
 func (rs Rules[D, A]) Apply(s SudokuBuilder[D, A]) error {
 	for _, r := range rs {
@@ -15,21 +15,21 @@ func (rs Rules[D, A]) Apply(s SudokuBuilder[D, A]) error {
 	return nil
 }
 
-type Restriction[D Digits[D], A Area] interface {
+type Restriction[D Digits[D], A Area[A]] interface {
 	Name() string
 }
 
-type ChangeProcessor[D Digits[D], A Area] interface {
+type ChangeProcessor[D Digits[D], A Area[A]] interface {
 	Name() string
 	ProcessChange(s Sudoku[D, A], cell CellLocation, mask D) error
 }
 
-type SolveProcessor[D Digits[D], A Area] interface {
+type SolveProcessor[D Digits[D], A Area[A]] interface {
 	Name() string
 	ProcessSolve(s Sudoku[D, A], cell CellLocation, mask D) error
 }
 
-type SolveProcessors[D Digits[D], A Area] []SolveProcessor[D, A]
+type SolveProcessors[D Digits[D], A Area[A]] []SolveProcessor[D, A]
 
 func (sps SolveProcessors[D, A]) Name() string {
 	return "Solve Processors"
@@ -48,7 +48,7 @@ func (sps SolveProcessors[D, A]) ProcessChange(s Sudoku[D, A], cell CellLocation
 	return nil
 }
 
-type ExclusionChainSolveProcessor[D Digits[D], A Area] struct{}
+type ExclusionChainSolveProcessor[D Digits[D], A Area[A]] struct{}
 
 func (e ExclusionChainSolveProcessor[D, A]) Name() string {
 	return "Exclusion Chain"
@@ -67,10 +67,11 @@ func (e ExclusionChainSolveProcessor[D, A]) ProcessSolve(s Sudoku[D, A], cell Ce
 	return nil
 }
 
-type SudokuBuilder[D Digits[D], A Area] interface {
+type SudokuBuilder[D Digits[D], A Area[A]] interface {
 	BaseSpec
-	DigitsSpec[D]
-	AreaSpec[A]
+
+	AreaOps[A]
+	DigitsOps[D]
 
 	buildTarget() Sudoku[D, A]
 
@@ -92,12 +93,12 @@ type SudokuBuilder[D Digits[D], A Area] interface {
 	Build() (Sudoku[D, A], error)
 }
 
-type sudokuBuilder[D Digits[D], A Area, G comparable, S size[D, A, G]] struct {
+type sudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
 	*sudoku[D, A, G, S]
 	solveProcessors SolveProcessors[D, A]
 }
 
-func newSudokuBuilder[D Digits[D], A Area, G comparable, S size[D, A, G]]() SudokuBuilder[D, A] {
+func newSudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G]]() SudokuBuilder[D, A] {
 	s := newSudoku[D, A, G, S]()
 	s.changeProcessors = append(s.changeProcessors, SolveProcessors[D, A]{
 		ExclusionChainSolveProcessor[D, A]{},
@@ -148,8 +149,8 @@ func (s *sudokuBuilder[D, A, G, S]) AddSolveProcessor(sp SolveProcessor[D, A]) {
 }
 
 func (s *sudokuBuilder[D, A, G, S]) AddExclusionArea(l CellLocation, a A) {
-	s.AreaWithout(&a, l)
-	s.exclusionAreas[l.Row][l.Col] = s.UnionAreas(s.exclusionAreas[l.Row][l.Col], a)
+	a = a.Without(l)
+	s.exclusionAreas[l.Row][l.Col] = s.exclusionAreas[l.Row][l.Col].Or(a)
 }
 
 func (s *sudokuBuilder[D, A, G, S]) Build() (Sudoku[D, A], error) {
