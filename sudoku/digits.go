@@ -106,7 +106,7 @@ func (c digits_16[AD]) Min() int {
 }
 
 func (c digits_16[AD]) Max() int {
-	return 64 - bits.LeadingZeros16(uint16(c))
+	return 16 - bits.LeadingZeros16(uint16(c))
 }
 
 func (c digits_16[AD]) String() string {

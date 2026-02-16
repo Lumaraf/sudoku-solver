@@ -1,9 +1,11 @@
 package test
 
 import (
+	"testing"
+
+	extraRule "github.com/lumaraf/sudoku-solver/extra/rule"
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
-	"testing"
 )
 
 func TestChess(t *testing.T) {
@@ -21,7 +23,7 @@ func TestChess(t *testing.T) {
 				"  3 1   8",
 				"   9   2 ",
 			),
-			rule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
 		},
 		"miracle": {
 			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
@@ -36,9 +38,9 @@ func TestChess(t *testing.T) {
 				"         ",
 				"         ",
 			),
-			rule.AntiKingRule[sudoku.Digits9, sudoku.Area9x9]{},
-			rule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
-			rule.NonConsecutiveRule[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.AntiKingRule[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.NonConsecutiveRule[sudoku.Digits9, sudoku.Area9x9]{},
 		},
 		//"159": {
 		//	Rows: []string{

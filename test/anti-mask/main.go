@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	extraRule "github.com/lumaraf/sudoku-solver/extra/rule"
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
@@ -43,7 +44,7 @@ func main() {
 			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
 			//rule.DiagonalRule[sudoku.Digits9, sudoku.Area9x9]{},
 			//rule.DisjointGroupsRule[sudoku.Digits9, sudoku.Area9x9]{},
-			rule.ParityFromString[sudoku.Digits9, sudoku.Area9x9](rows...),
+			extraRule.ParityFromString[sudoku.Digits9, sudoku.Area9x9](rows...),
 			NeighborMaskRule[sudoku.Digits9, sudoku.Area9x9]{
 				fn: func(a, b int) bool {
 					return a%2 == 0 || b%2 == 0 || (a+b) != 10

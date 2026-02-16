@@ -1,6 +1,7 @@
 package strategy
 
 import (
+	extraRule "github.com/lumaraf/sudoku-solver/extra/rule"
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
@@ -9,8 +10,8 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sud
 	allMasks := generateAreaSumMasks(s)
 	strategies := sudoku.Strategies[D, A]{}
 
-	areaSumRestrictions := make([]rule.AreaSumRestriction[D, A], 0)
-	for r := range sudoku.GetRestrictions[D, A, rule.AreaSumRestriction[D, A]](s) {
+	areaSumRestrictions := make([]extraRule.AreaSumRestriction[D, A], 0)
+	for r := range sudoku.GetRestrictions[D, A, extraRule.AreaSumRestriction[D, A]](s) {
 		areaSumRestrictions = append(areaSumRestrictions, r)
 	}
 

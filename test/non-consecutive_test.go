@@ -1,9 +1,11 @@
 package test
 
 import (
+	"testing"
+
+	extraRule "github.com/lumaraf/sudoku-solver/extra/rule"
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
-	"testing"
 )
 
 func TestNonConsecutive(t *testing.T) {
@@ -21,7 +23,7 @@ func TestNonConsecutive(t *testing.T) {
 				"  1    7 ",
 				"8        ",
 			),
-			rule.NonConsecutiveRule[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.NonConsecutiveRule[sudoku.Digits9, sudoku.Area9x9]{},
 		},
 	}.Run(t, sudoku.NewSudokuBuilder9x9)
 }

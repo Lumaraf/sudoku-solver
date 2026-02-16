@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
-	"time"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		//s.SetLogger(sudoku.NewLogger[sudoku.Digits6]())
+		s.SetLogger(sudoku.NewLogger[sudoku.Digits6]())
 		slv := s.NewSolver()
 		slv.SetChainLimit(0)
 		slv.Use(
@@ -55,7 +56,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		//s.SetLogger(sudoku.NewLogger[sudoku.Digits9]())
+		s.SetLogger(sudoku.NewLogger[sudoku.Digits9]())
 		slv := s.NewSolver()
 		slv.Use(
 			strategy.AllStrategies[sudoku.Digits9, sudoku.Area9x9](),

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	extraStrategy "github.com/lumaraf/sudoku-solver/extra/strategy"
 	"github.com/lumaraf/sudoku-solver/strategy"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 	"github.com/stretchr/testify/assert"
@@ -30,14 +31,14 @@ func (tests SudokuTests[D, A]) Run(t *testing.T, builderFunc func() sudoku.Sudok
 			s.SetLogger(sudoku.NewLogger[D]())
 
 			//g := s.NewGuesser()
-			//g.Use(strategy.AllStrategies[D, A]())
-			//for s := range g.Guess(nil, ctx) {
-			//	s.Print()
+			//g.Use(strategy.AllStrategies[D, A](), extraStrategy.AllExtraStrategies[D, A]())
+			//for solution := range g.Guess(nil, ctx) {
+			//	solution.Print()
 			//}
 
 			slv := s.NewSolver()
-			slv.Use(strategy.AllStrategies[D, A]())
-			slv.SetChainLimit(0)
+			slv.Use(strategy.AllStrategies[D, A](), extraStrategy.AllExtraStrategies[D, A]())
+			slv.SetChainLimit(3)
 			assert.NoError(t, slv.Solve(ctx))
 			if !assert.True(t, s.IsSolved()) {
 				s.Print()

@@ -17,6 +17,8 @@ type Sudoku[D Digits[D], A Area[A]] interface {
 	Column(col int) A
 	Box(box int) A
 
+	BoxAt(l CellLocation) int
+
 	// Get retrieves the digits at the specified cell location.
 	Get(l CellLocation) D
 
@@ -80,10 +82,6 @@ type Sudoku[D Digits[D], A Area[A]] interface {
 type CellLocation struct {
 	Row int
 	Col int
-}
-
-func (l CellLocation) Box() int {
-	return l.Row/3*3 + l.Col/3
 }
 
 type sudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
@@ -171,6 +169,11 @@ func (s *sudoku[D, A, G, S]) Box(box int) (a A) {
 	//	}
 	//}
 	//return
+}
+
+func (s *sudoku[D, A, G, S]) BoxAt(l CellLocation) int {
+	boxRows, boxCols := s.BoxSize()
+	return (l.Row/boxRows)*boxCols + l.Col/boxCols
 }
 
 func (s *sudoku[D, A, G, S]) NewDigits(values ...int) (d D) {

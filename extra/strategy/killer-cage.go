@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lumaraf/sudoku-solver/rule"
+	"github.com/lumaraf/sudoku-solver/extra/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 

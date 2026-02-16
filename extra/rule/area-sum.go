@@ -3,6 +3,7 @@ package rule
 import (
 	"errors"
 
+	"github.com/lumaraf/sudoku-solver/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
@@ -45,7 +46,7 @@ func (r KillerCageRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 		area: area,
 		sum:  r.Sum,
 	})
-	return sb.Use(NewUniqueAreaRule[D, A]("killer cage", area))
+	return sb.Use(rule.NewUniqueAreaRule[D, A]("killer cage", area))
 }
 
 type AreaSumRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
@@ -56,6 +57,10 @@ type AreaSumRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 func (r AreaSumRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	area := sb.NewArea(r.Area...)
 	sb.AddRestriction(AreaSumRestriction[D, A]{
+		area: area,
+		sum:  r.Sum,
+	})
+	sb.AddValidator(AreaSumValidator[D, A]{
 		area: area,
 		sum:  r.Sum,
 	})
@@ -79,15 +84,24 @@ func (r AreaSumRestriction[D, A]) Sum() int {
 	return r.sum
 }
 
-func (r AreaSumRestriction[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
+type AreaSumValidator[D sudoku.Digits[D], A sudoku.Area[A]] struct {
+	area A
+	sum  int
+}
+
+func (v AreaSumValidator[D, A]) Name() string {
+	return "AreaSumValidator"
+}
+
+func (v AreaSumValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 	areaMin := 0
 	areaMax := 0
-	for _, cell := range r.Area().Locations {
+	for _, cell := range v.area.Locations {
 		d := s.Get(cell)
 		areaMin += d.Min()
 		areaMax += d.Max()
 	}
-	if areaMin > r.Sum() || areaMax < r.Sum() {
+	if areaMin > v.sum || areaMax < v.sum {
 		return ErrInvalidAreaSum
 	}
 	return nil

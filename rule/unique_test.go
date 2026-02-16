@@ -1,10 +1,10 @@
 package rule
 
 import (
-	"fmt"
+	"testing"
+
 	"github.com/lumaraf/sudoku-solver/sudoku"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestClassicRules(t *testing.T) {
@@ -67,7 +67,6 @@ func TestUniqueRestriction_Validate(t *testing.T) {
 			if test.expectedError == nil {
 				assert.NoError(t, err)
 			} else {
-				fmt.Println(err)
 				assert.ErrorIs(t, err, test.expectedError)
 			}
 		})
