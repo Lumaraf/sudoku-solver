@@ -39,7 +39,7 @@ func (st PatternOverlayStrategy[D, A]) AreaFilter() A {
 	return st.area
 }
 
-func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	valueAreas := make([]A, s.Size())
 	for row := 0; row < s.Size(); row++ {
 		for col := 0; col < s.Size(); col++ {
@@ -64,7 +64,8 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.St
 			})
 			count++
 			if count > 1000 {
-				return sudoku.Strategies[D, A]{st}, nil
+				push(st)
+				return nil
 			}
 		}
 	}
@@ -85,11 +86,12 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.St
 
 	for l, d := range changes {
 		if err := s.RemoveMask(l, d); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return sudoku.Strategies[D, A]{st}, nil
+	push(st)
+	return nil
 }
 
 type valuePattern[A sudoku.Area[A]] struct {

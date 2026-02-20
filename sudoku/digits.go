@@ -91,11 +91,8 @@ func (c digits_16[AD]) getBit(v int) uint16 {
 }
 
 func (c digits_16[AD]) Values(yield func(int) bool) {
-	mask := uint16(c)
-	for mask != 0 {
-		lz := bits.TrailingZeros16(mask)
-		mask = mask & ^(1 << lz)
-		if !yield(int(lz) + 1) {
+	for bit := range iterateBits[digits_16[AD]](c) {
+		if !yield(int(bit) + 1) {
 			return
 		}
 	}

@@ -32,7 +32,7 @@ func (st UniqueSetStrategy[D, A]) AreaFilter() A {
 	return st.Area
 }
 
-func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	cells := make([]D, 0, st.Area.Size())
 	for _, cell := range st.Area.Locations {
 		d := s.Get(cell)
@@ -43,7 +43,7 @@ func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strateg
 		cells = append(cells, d)
 	}
 	if len(cells) <= 1 {
-		return nil, nil
+		return nil
 	}
 
 	bestSet := s.AllDigits()
@@ -53,9 +53,8 @@ func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strateg
 		}
 	}
 	if bestSet == s.AllDigits() || bestSet.Count() == len(cells) {
-		return []sudoku.Strategy[D, A]{
-			st,
-		}, nil
+		push(st)
+		return nil
 	}
 
 	mask := bestSet.Not()
@@ -68,18 +67,17 @@ func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strateg
 		} else {
 			notInSet = notInSet.With(cell)
 			if err := s.RemoveMask(cell, bestSet); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
-	return []sudoku.Strategy[D, A]{
-		UniqueSetStrategy[D, A]{
-			Area: inSet,
-		},
-		UniqueSetStrategy[D, A]{
-			Area: notInSet,
-		},
-	}, nil
+	push(UniqueSetStrategy[D, A]{
+		Area: inSet,
+	})
+	push(UniqueSetStrategy[D, A]{
+		Area: notInSet,
+	})
+	return nil
 }
 
 func (st UniqueSetStrategy[D, A]) findSets(s sudoku.Sudoku[D, A], contents []D, count int, mask D) func(yield func(D) bool) {

@@ -71,7 +71,7 @@ func (slv SetEquivalenceStrategy[D, A]) AreaFilter() A {
 	return slv.areas[0].Or(slv.areas[1])
 }
 
-func (slv SetEquivalenceStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (slv SetEquivalenceStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	masks := make([]D, 2)
 	for i, area := range slv.areas {
 		for _, l := range area.Locations {
@@ -82,7 +82,7 @@ func (slv SetEquivalenceStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 	if !masks[1].And(masks[0].Not()).Empty() {
 		for _, l := range slv.areas[0].Locations {
 			if err := s.Mask(l, masks[1]); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
@@ -90,10 +90,11 @@ func (slv SetEquivalenceStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 	if !masks[0].And(masks[1].Not()).Empty() {
 		for _, l := range slv.areas[1].Locations {
 			if err := s.Mask(l, masks[0]); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 
-	return []sudoku.Strategy[D, A]{slv}, nil
+	push(slv)
+	return nil
 }

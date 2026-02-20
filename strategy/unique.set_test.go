@@ -18,7 +18,7 @@ func TestUniqueSetStrategy_Solve(t *testing.T) {
 	strategy := UniqueSetStrategy[sudoku.Digits9, sudoku.Area9x9]{
 		Area: s.Row(0),
 	}
-	_, err = strategy.Solve(s)
+	err = strategy.Solve(s, func(s sudoku.Strategy[sudoku.Digits9, sudoku.Area9x9]) {})
 	if err != nil {
 		t.Errorf("UniqueSetStrategy.Solve failed: %v", err)
 	}

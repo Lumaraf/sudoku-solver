@@ -18,7 +18,7 @@ const (
 type Strategy[D Digits[D], A Area[A]] interface {
 	Name() string
 	Difficulty() Difficulty
-	Solve(s Sudoku[D, A]) ([]Strategy[D, A], error)
+	Solve(s Sudoku[D, A], push func(Strategy[D, A])) error
 	AreaFilter() A
 }
 
@@ -138,7 +138,9 @@ func (slv *solver[D, A, G, S]) runSolvers(s *sudoku[D, A, G, S], strategies []St
 			s.stats.SolverRuns++
 			cellUpdatesBefore := s.stats.CellUpdates
 			s.logger.EnterContext(strategy)
-			s2, err := strategy.Solve(s)
+			err := strategy.Solve(s, func(newStrategy Strategy[D, A]) {
+				newSolvers = append(newSolvers, newStrategy)
+			})
 			s.logger.ExitContext()
 			if err != nil {
 				return nil, err
@@ -146,7 +148,6 @@ func (slv *solver[D, A, G, S]) runSolvers(s *sudoku[D, A, G, S], strategies []St
 			if s.stats.CellUpdates > cellUpdatesBefore {
 				s.stats.SolverHits++
 			}
-			newSolvers = append(newSolvers, s2...)
 		} else {
 			newSolvers = append(newSolvers, strategy)
 		}

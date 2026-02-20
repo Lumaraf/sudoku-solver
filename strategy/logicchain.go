@@ -27,7 +27,7 @@ func (slv LogicChainStrategy[D, A]) AreaFilter() A {
 	return slv.area
 }
 
-func (slv LogicChainStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (slv LogicChainStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	for _, cell := range s.ChangedArea().Locations {
 		d := s.Get(cell)
 		if d.Count() >= 2 {
@@ -42,11 +42,12 @@ func (slv LogicChainStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strat
 				if err != nil {
 					err = s.RemoveOption(cell, v)
 					if err != nil {
-						return nil, err
+						return err
 					}
 				}
 			}
 		}
 	}
-	return []sudoku.Strategy[D, A]{slv}, nil
+	push(slv)
+	return nil
 }

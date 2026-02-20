@@ -43,7 +43,7 @@ func (st XWingStrategy[D, A]) Difficulty() sudoku.Difficulty {
 	return sudoku.DIFFICULTY_HARD
 }
 
-func (slv XWingStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (slv XWingStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	rows := make([]int, 0, len(slv.rows))
 	for _, row := range slv.rows {
 		if !s.Row(row).And(s.SolvedArea().Not()).Empty() {
@@ -61,13 +61,14 @@ func (slv XWingStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D
 	slv.cols = cols
 
 	if len(slv.rows) < 2 && len(slv.cols) < 2 {
-		return nil, nil
+		return nil
 	}
 
 	for digit := 1; digit <= 9; digit++ {
 		slv.findXWing(s, digit)
 	}
-	return []sudoku.Strategy[D, A]{slv}, nil
+	push(slv)
+	return nil
 }
 
 func (slv XWingStrategy[D, A]) findXWing(s sudoku.Sudoku[D, A], digit int) bool {

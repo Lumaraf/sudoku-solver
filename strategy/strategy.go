@@ -34,6 +34,6 @@ func AllStrategies[D sudoku.Digits[D], A sudoku.Area[A]]() sudoku.StrategyFactor
 		// Finds all possible placement patterns for every digit and overlays them to eliminate impossible options.
 		sudoku.StrategyFactoryFunc[D, A](PatternOverlayStrategyFactory[D, A]),
 
-		sudoku.StrategyFactoryFunc[D, A](SetEquivalenceStrategyFactory[D, A]),
+		//sudoku.StrategyFactoryFunc[D, A](SetEquivalenceStrategyFactory[D, A]),
 	}
 }

@@ -2,7 +2,6 @@ package strategy
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/lumaraf/sudoku-solver/extra/rule"
 	"github.com/lumaraf/sudoku-solver/sudoku"
@@ -52,10 +51,10 @@ func (st KillerCageStrategy[D, A]) AreaFilter() A {
 	return st.area
 }
 
-func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	area := st.area.And(s.SolvedArea().Not())
 	if area.Empty() {
-		return nil, nil
+		return nil
 	}
 
 	// filter masks and find forced digits
@@ -68,7 +67,7 @@ func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strate
 		}
 	}
 	if len(masks) == 0 {
-		return nil, errors.New("no valid masks for killer cage")
+		return errors.New("no valid masks for killer cage")
 	}
 	//st.masks = masks
 
@@ -82,9 +81,8 @@ func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strate
 			}
 		}
 		for _, l := range exclusionArea.Locations {
-			fmt.Printf("Removing forced digit %d from %v due to killer cage\n", v, l)
 			if err := s.RemoveOption(l, v); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
@@ -95,13 +93,14 @@ func (st KillerCageStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strate
 		for v := range d.Values {
 			if !st.isValuePlaceable(s, l, v) {
 				if err := s.RemoveOption(l, v); err != nil {
-					return nil, err
+					return err
 				}
 			}
 		}
 	}
 
-	return sudoku.Strategies[D, A]{st}, nil
+	push(st)
+	return nil
 }
 
 func (st KillerCageStrategy[D, A]) isValuePlaceable(s sudoku.Sudoku[D, A], l sudoku.CellLocation, v int) bool {

@@ -50,10 +50,10 @@ func (st UniqueIntersectionStrategy[D, A]) AreaFilter() A {
 	return st.area
 }
 
-func (st UniqueIntersectionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (st UniqueIntersectionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	st.intersection = st.intersection.Or(s.SolvedArea().Not())
 	if st.intersection.Empty() {
-		return nil, nil
+		return nil
 	}
 
 	var d D
@@ -64,15 +64,16 @@ func (st UniqueIntersectionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudok
 		d = d.And(s.Get(l).Not())
 	}
 
+	push(st)
 	if d.Empty() {
-		return []sudoku.Strategy[D, A]{st}, nil
+		return nil
 	}
 
 	for _, l := range st.target.Locations {
 		if err := s.RemoveMask(l, d); err != nil {
-			return []sudoku.Strategy[D, A]{st}, err
+			return err
 		}
 	}
 
-	return []sudoku.Strategy[D, A]{st}, nil
+	return nil
 }

@@ -37,10 +37,10 @@ func (st UniqueExclusionStrategy[D, A]) AreaFilter() A {
 	return st.area
 }
 
-func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.Strategy[D, A], error) {
+func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
 	area := st.area.And(s.SolvedArea().Not())
 	if area.Empty() {
-		return nil, nil
+		return nil
 	}
 
 	// by value
@@ -71,7 +71,7 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 		}
 
 		if err := st.maskChangedCells(s, changed, clones); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -92,11 +92,12 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A]) ([]sudoku.S
 		}
 
 		if err := st.maskChangedCells(s, changed, clones); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return []sudoku.Strategy[D, A]{st}, nil
+	push(st)
+	return nil
 }
 
 func (st UniqueExclusionStrategy[D, A]) maskChangedCells(s sudoku.Sudoku[D, A], changed A, clones []sudoku.Sudoku[D, A]) error {

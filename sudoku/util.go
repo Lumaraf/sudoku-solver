@@ -4,18 +4,6 @@ import (
 	"fmt"
 )
 
-func And[BO interface{ and(b BO) BO }](a, b BO) BO {
-	return a.and(b)
-}
-
-func Or[BO interface{ or(b BO) BO }](a, b BO) BO {
-	return a.or(b)
-}
-
-func Not[BO interface{ not() BO }](a BO) BO {
-	return a.not()
-}
-
 func PrintGrid[D Digits[D], A Area[A]](s Sudoku[D, A]) {
 	boxRows, boxCols := s.BoxSize()
 	gridSize := s.Size()
@@ -45,6 +33,14 @@ func PrintGrid[D Digits[D], A Area[A]](s Sudoku[D, A]) {
 	boxLine := createLine('╠', '╪', '═', '╬', '╣')
 	bottomLine := createLine('╚', '╧', '═', '╩', '╝')
 
+	symbols := make([]rune, 0, 36)
+	for r := '1'; r <= '9'; r++ {
+		symbols = append(symbols, r)
+	}
+	for r := 'A'; r <= 'Z'; r++ {
+		symbols = append(symbols, r)
+	}
+
 	fmt.Println(topLine)
 	for row := 0; row < gridSize; row++ {
 		for subRow := 0; subRow < boxRows; subRow++ {
@@ -59,7 +55,7 @@ func PrintGrid[D Digits[D], A Area[A]](s Sudoku[D, A]) {
 				cell := s.Get(CellLocation{Row: row, Col: col})
 				for digit := subRow * boxCols; digit < (subRow+1)*boxCols; digit++ {
 					if cell.CanContain(digit + 1) {
-						line = append(line, rune('0'+digit+1))
+						line = append(line, symbols[digit])
 					} else {
 						line = append(line, ' ')
 					}
@@ -86,6 +82,37 @@ func GetRestrictions[D Digits[D], A Area[A], R Restriction[D, A]](s Sudoku[D, A]
 					return
 				}
 			}
+		}
+	}
+}
+
+var bitMasks = [65536][]uint8{}
+
+func init() {
+	c := 0
+	for i := 0; i < len(bitMasks); i++ {
+		var bits []uint8
+		for j := 0; j < 16; j++ {
+			if (i & (1 << j)) != 0 {
+				bits = append(bits, uint8(j))
+				c++
+			}
+		}
+		bitMasks[i] = bits
+	}
+}
+
+func iterateBits[UI ~uint16 | ~uint32 | ~uint64](v UI) func(yield func(uint8) bool) {
+	return func(yield func(uint8) bool) {
+		offset := uint8(0)
+		for v != 0 {
+			for _, bit := range bitMasks[v&0xFFFF] {
+				if !yield(bit + offset) {
+					return
+				}
+			}
+			offset += 16
+			v = v >> 16
 		}
 	}
 }
