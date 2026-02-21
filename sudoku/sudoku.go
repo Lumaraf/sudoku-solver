@@ -84,7 +84,7 @@ type CellLocation struct {
 	Col int
 }
 
-type sudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
+type sudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G], GO gridOps[D, A, G]] struct {
 	size[D, A, G]
 	grid             G
 	rows             []A
@@ -112,12 +112,11 @@ type Stats struct {
 	GuessMisses        int
 }
 
-func newSudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G]]() *sudoku[D, A, G, S] {
+func newSudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G], GO gridOps[D, A, G]]() *sudoku[D, A, G, S, GO] {
 	var a A
 
-	sizeSpec := *new(S)
-	s := sudoku[D, A, G, S]{
-		size:        sizeSpec,
+	s := sudoku[D, A, G, S, GO]{
+		size:        *new(S),
 		chainLimit:  2,
 		nextChanged: a.All(),
 		logger:      voidLogger[D]{},
@@ -126,7 +125,7 @@ func newSudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G]]() *sudoku[
 	s.rows = make([]A, s.Size())
 	s.columns = make([]A, s.Size())
 	s.boxes = make([]A, s.Size())
-	boxRows, boxCols := sizeSpec.BoxSize()
+	boxRows, boxCols := s.BoxSize()
 	for row := 0; row < s.Size(); row++ {
 		for col := 0; col < s.Size(); col++ {
 			l := CellLocation{row, col}
@@ -149,15 +148,15 @@ func newSudoku[D Digits[D], A Area[A], G comparable, S size[D, A, G]]() *sudoku[
 	return &s
 }
 
-func (s *sudoku[D, A, G, S]) Row(row int) (a A) {
+func (s *sudoku[D, A, G, S, GO]) Row(row int) (a A) {
 	return s.rows[row]
 }
 
-func (s *sudoku[D, A, G, S]) Column(col int) (a A) {
+func (s *sudoku[D, A, G, S, GO]) Column(col int) (a A) {
 	return s.columns[col]
 }
 
-func (s *sudoku[D, A, G, S]) Box(box int) (a A) {
+func (s *sudoku[D, A, G, S, GO]) Box(box int) (a A) {
 	return s.boxes[box]
 	//boxRows, boxCols := s.BoxSize()
 	//boxesPerCol := s.Size() / boxCols
@@ -171,28 +170,28 @@ func (s *sudoku[D, A, G, S]) Box(box int) (a A) {
 	//return
 }
 
-func (s *sudoku[D, A, G, S]) BoxAt(l CellLocation) int {
+func (s *sudoku[D, A, G, S, GO]) BoxAt(l CellLocation) int {
 	boxRows, boxCols := s.BoxSize()
 	return (l.Row/boxRows)*boxCols + l.Col/boxCols
 }
 
-func (s *sudoku[D, A, G, S]) NewDigits(values ...int) (d D) {
+func (s *sudoku[D, A, G, S, GO]) NewDigits(values ...int) (d D) {
 	for _, v := range values {
 		d = d.With(v)
 	}
 	return d.And(d.All())
 }
 
-func (s *sudoku[D, A, G, S]) AllDigits() (d D) {
+func (s *sudoku[D, A, G, S, GO]) AllDigits() (d D) {
 	return d.All()
 }
 
-func (s *sudoku[D, A, G, S]) Get(l CellLocation) D {
+func (s *sudoku[D, A, G, S, GO]) Get(l CellLocation) D {
 	cell := s.GridCell(&s.grid, l.Row, l.Col)
 	return *cell
 }
 
-func (s *sudoku[D, A, G, S]) Set(l CellLocation, v int) error {
+func (s *sudoku[D, A, G, S, GO]) Set(l CellLocation, v int) error {
 	if err := s.checkValue(v); err != nil {
 		return err
 	}
@@ -211,7 +210,7 @@ func (s *sudoku[D, A, G, S]) Set(l CellLocation, v int) error {
 	return nil
 }
 
-func (s *sudoku[D, A, G, S]) Try(f func(s Sudoku[D, A]) error) error {
+func (s *sudoku[D, A, G, S, GO]) Try(f func(s Sudoku[D, A]) error) error {
 	clone := *s
 	clone.logger = voidLogger[D]{}
 	clone.nextChanged = *new(A)
@@ -219,21 +218,21 @@ func (s *sudoku[D, A, G, S]) Try(f func(s Sudoku[D, A]) error) error {
 }
 
 // area ops
-func (s *sudoku[D, A, G, S]) NewArea(locs ...CellLocation) (a A) {
+func (s *sudoku[D, A, G, S, GO]) NewArea(locs ...CellLocation) (a A) {
 	for _, l := range locs {
 		a = a.With(l)
 	}
 	return a
 }
 
-func (s *sudoku[D, A, G, S]) NewAreaFromOffsets(center CellLocation, o Offsets) (a A) {
+func (s *sudoku[D, A, G, S, GO]) NewAreaFromOffsets(center CellLocation, o Offsets) (a A) {
 	for l := range o.locations(s.Size(), center) {
 		a = a.With(l)
 	}
 	return a
 }
 
-func (s *sudoku[D, A, G, S]) Mask(l CellLocation, d D) error {
+func (s *sudoku[D, A, G, S, GO]) Mask(l CellLocation, d D) error {
 	target := s.GridCell(&s.grid, l.Row, l.Col)
 	if !(*target).And(d.Not()).Empty() {
 		s.nextChanged = s.nextChanged.With(l)
@@ -250,7 +249,7 @@ func (s *sudoku[D, A, G, S]) Mask(l CellLocation, d D) error {
 	return nil
 }
 
-func (s *sudoku[D, A, G, S]) RemoveMask(l CellLocation, d D) error {
+func (s *sudoku[D, A, G, S, GO]) RemoveMask(l CellLocation, d D) error {
 	target := s.GridCell(&s.grid, l.Row, l.Col)
 	if !(*target).And(d).Empty() {
 		s.nextChanged = s.nextChanged.With(l)
@@ -268,7 +267,7 @@ func (s *sudoku[D, A, G, S]) RemoveMask(l CellLocation, d D) error {
 	return nil
 }
 
-func (s *sudoku[D, A, G, S]) RemoveOption(l CellLocation, v int) error {
+func (s *sudoku[D, A, G, S, GO]) RemoveOption(l CellLocation, v int) error {
 	if err := s.checkValue(v); err != nil {
 		return err
 	}
@@ -276,34 +275,35 @@ func (s *sudoku[D, A, G, S]) RemoveOption(l CellLocation, v int) error {
 	return s.RemoveMask(l, mask)
 }
 
-func (s *sudoku[D, A, G, S]) checkValue(v int) error {
+func (s *sudoku[D, A, G, S, GO]) checkValue(v int) error {
 	if v < 1 || v > s.Size() {
 		return ErrValueOutOfRange
 	}
 	return nil
 }
 
-func (s *sudoku[D, A, G, S]) PossibleLocations(v int) A {
-	return s.size.PossibleLocations(s.grid, s.NewDigits(v))
+func (s *sudoku[D, A, G, S, GO]) PossibleLocations(v int) A {
+	var gridOps GO
+	return gridOps.PossibleLocations(s.grid, s.NewDigits(v))
 }
 
-func (s *sudoku[D, A, G, S]) SolvedArea() A {
+func (s *sudoku[D, A, G, S, GO]) SolvedArea() A {
 	return s.solved
 }
 
-func (s *sudoku[D, A, G, S]) ChangedArea() A {
+func (s *sudoku[D, A, G, S, GO]) ChangedArea() A {
 	return s.changed
 }
 
-func (s *sudoku[D, A, G, S]) NextChangedArea() A {
+func (s *sudoku[D, A, G, S, GO]) NextChangedArea() A {
 	return s.nextChanged
 }
 
-func (s *sudoku[D, A, G, S]) GetExclusionArea(l CellLocation) A {
+func (s *sudoku[D, A, G, S, GO]) GetExclusionArea(l CellLocation) A {
 	return s.exclusionAreas[l.Row][l.Col]
 }
 
-func (s *sudoku[D, A, G, S]) IsUniqueArea(area A) bool {
+func (s *sudoku[D, A, G, S, GO]) IsUniqueArea(area A) bool {
 	for _, l := range area.Locations {
 		expectedArea := area.Without(l)
 		if area.And(s.GetExclusionArea(l)) != expectedArea {
@@ -313,11 +313,11 @@ func (s *sudoku[D, A, G, S]) IsUniqueArea(area A) bool {
 	return true
 }
 
-func (s *sudoku[D, A, G, S]) SetLogger(logger Logger[D]) {
+func (s *sudoku[D, A, G, S, GO]) SetLogger(logger Logger[D]) {
 	s.logger = logger
 }
 
-func (s *sudoku[D, A, G, S]) Print() error {
+func (s *sudoku[D, A, G, S, GO]) Print() error {
 	count := 0
 	for row := 0; row < s.Size(); row++ {
 		for col := 0; col < s.Size(); col++ {
@@ -335,10 +335,10 @@ func (s *sudoku[D, A, G, S]) Print() error {
 	return nil
 }
 
-func (s *sudoku[D, A, G, S]) Stats() Stats {
+func (s *sudoku[D, A, G, S, GO]) Stats() Stats {
 	return s.stats
 }
 
-func (s *sudoku[D, A, G, S]) getRestrictions() []any {
+func (s *sudoku[D, A, G, S, GO]) getRestrictions() []any {
 	return s.restrictions
 }

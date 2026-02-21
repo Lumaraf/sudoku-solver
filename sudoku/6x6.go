@@ -9,7 +9,7 @@ func NewSudoku6x6(rules ...Rule[Digits6, Area6x6]) (Sudoku[Digits6, Area6x6], er
 }
 
 func NewSudokuBuilder6x6() SudokuBuilder[Digits6, Area6x6] {
-	return newSudokuBuilder[Digits6, Area6x6, grid6x6, size6]()
+	return newSudokuBuilder[Digits6, Area6x6, grid6x6, size6, genericGridOps[Digits6, Area6x6, grid6x6, size6]]()
 }
 
 type Area6x6 = area128[size6]
@@ -54,16 +54,4 @@ func (s size6) NewAreaFromOffsets(center CellLocation, o Offsets) Area6x6 {
 		a = a.With(loc)
 	}
 	return a
-}
-
-func (s size6) PossibleLocations(g grid6x6, d Digits6) (a Area6x6) {
-	for row := 0; row < s.Size(); row++ {
-		for col := 0; col < s.Size(); col++ {
-			cell := s.GridCell(&g, row, col)
-			if !(*cell).And(d).Empty() {
-				a = a.With(CellLocation{row, col})
-			}
-		}
-	}
-	return
 }

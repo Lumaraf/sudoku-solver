@@ -62,26 +62,26 @@ type Solver[D Digits[D], A Area[A]] interface {
 	Solve(ctx context.Context) error
 }
 
-type solver[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
-	sudoku            *sudoku[D, A, G, S]
+type solver[D Digits[D], A Area[A], G comparable, S size[D, A, G], GO gridOps[D, A, G]] struct {
+	sudoku            *sudoku[D, A, G, S, GO]
 	chainLimit        int
 	strategyFactories []StrategyFactory[D, A]
 }
 
-func (slv *solver[D, A, G, S]) SetChainLimit(limit int) {
+func (slv *solver[D, A, G, S, GO]) SetChainLimit(limit int) {
 	slv.chainLimit = limit
 }
 
-func (slv *solver[D, A, G, S]) Use(factories ...StrategyFactory[D, A]) {
+func (slv *solver[D, A, G, S, GO]) Use(factories ...StrategyFactory[D, A]) {
 	slv.strategyFactories = append(slv.strategyFactories, factories...)
 }
 
-func (slv *solver[D, A, G, S]) Solve(ctx context.Context) error {
+func (slv *solver[D, A, G, S, GO]) Solve(ctx context.Context) error {
 	_, err := slv.solve(slv.sudoku, slv.createStrategies(), ctx)
 	return err
 }
 
-func (slv *solver[D, A, G, S]) createStrategies() Strategies[D, A] {
+func (slv *solver[D, A, G, S, GO]) createStrategies() Strategies[D, A] {
 	strategies := make(Strategies[D, A], 0, len(slv.strategyFactories))
 	for _, factory := range slv.strategyFactories {
 		strategies = append(strategies, factory.For(slv.sudoku)...)
@@ -90,7 +90,7 @@ func (slv *solver[D, A, G, S]) createStrategies() Strategies[D, A] {
 	return strategies
 }
 
-func (slv *solver[D, A, G, S]) solve(s *sudoku[D, A, G, S], solvers []Strategy[D, A], ctx context.Context) ([]Strategy[D, A], error) {
+func (slv *solver[D, A, G, S, GO]) solve(s *sudoku[D, A, G, S, GO], solvers []Strategy[D, A], ctx context.Context) ([]Strategy[D, A], error) {
 	for !s.IsSolved() {
 		if err := ctx.Err(); err != nil {
 			return solvers, err
@@ -121,7 +121,7 @@ func (slv *solver[D, A, G, S]) solve(s *sudoku[D, A, G, S], solvers []Strategy[D
 	return solvers, s.Validate()
 }
 
-func (slv *solver[D, A, G, S]) runSolvers(s *sudoku[D, A, G, S], strategies []Strategy[D, A]) ([]Strategy[D, A], error) {
+func (slv *solver[D, A, G, S, GO]) runSolvers(s *sudoku[D, A, G, S, GO], strategies []Strategy[D, A]) ([]Strategy[D, A], error) {
 	s.changed = s.nextChanged
 	s.nextChanged = *new(A)
 
@@ -160,7 +160,7 @@ type ExclusionChainError struct {
 	errors [9]error
 }
 
-func (slv *solver[D, A, G, S]) solveExclusionChain(s *sudoku[D, A, G, S], area A, levels int) error {
+func (slv *solver[D, A, G, S, GO]) solveExclusionChain(s *sudoku[D, A, G, S, GO], area A, levels int) error {
 	s.logger.EnterContext(StringContext("solveExclusionChain"))
 	defer s.logger.ExitContext()
 
@@ -194,21 +194,21 @@ func (slv *solver[D, A, G, S]) solveExclusionChain(s *sudoku[D, A, G, S], area A
 	return nil
 }
 
-func (s *sudoku[D, A, G, S]) setSolved(l CellLocation) {
+func (s *sudoku[D, A, G, S, GO]) setSolved(l CellLocation) {
 	s.solved = s.solved.With(l)
 }
 
-func (s *sudoku[D, A, G, S]) IsSolved() bool {
+func (s *sudoku[D, A, G, S, GO]) IsSolved() bool {
 	return s.solved.Size() == s.Size()*s.Size()
 }
 
-func (s *sudoku[D, A, G, S]) NewSolver() Solver[D, A] {
-	return &solver[D, A, G, S]{sudoku: s}
+func (s *sudoku[D, A, G, S, GO]) NewSolver() Solver[D, A] {
+	return &solver[D, A, G, S, GO]{sudoku: s}
 }
 
 var processChangeContext = StringContext("processChange")
 
-func (s *sudoku[D, A, G, S]) processChange(l CellLocation, mask D) error {
+func (s *sudoku[D, A, G, S, GO]) processChange(l CellLocation, mask D) error {
 	s.logger.EnterContext(processChangeContext)
 	defer s.logger.ExitContext()
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestSetAndGet(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9, genericGridOps[Digits9, Area9x9, grid9x9, size9]]()
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}
@@ -30,7 +30,7 @@ func TestSetAndGet(t *testing.T) {
 }
 
 func TestRemoveOption(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9, genericGridOps[Digits9, Area9x9, grid9x9, size9]]()
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}
@@ -50,7 +50,7 @@ func TestRemoveOption(t *testing.T) {
 }
 
 func TestMask(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9, genericGridOps[Digits9, Area9x9, grid9x9, size9]]()
 	s.changeProcessors = append(s.changeProcessors, SolveProcessors[Digits9, Area9x9]{})
 	s.nextChanged = Area9x9{}
 
@@ -74,7 +74,7 @@ func TestMask(t *testing.T) {
 }
 
 func TestRemoveMask(t *testing.T) {
-	s := newSudoku[Digits9, Area9x9, grid9x9, size9]()
+	s := newSudoku[Digits9, Area9x9, grid9x9, size9, genericGridOps[Digits9, Area9x9, grid9x9, size9]]()
 	s.nextChanged = Area9x9{}
 
 	loc := CellLocation{Row: 0, Col: 0}

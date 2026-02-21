@@ -9,7 +9,7 @@ func NewSudoku12x12(rules ...Rule[Digits12, Area12x12]) (Sudoku[Digits12, Area12
 }
 
 func NewSudokuBuilder12x12() SudokuBuilder[Digits12, Area12x12] {
-	return newSudokuBuilder[Digits12, Area12x12, grid12x12, size12]()
+	return newSudokuBuilder[Digits12, Area12x12, grid12x12, size12, genericGridOps[Digits12, Area12x12, grid12x12, size12]]()
 }
 
 type Area12x12 = area256[size12]
@@ -42,16 +42,4 @@ func (s size12) BoxSize() (int, int) {
 
 func (s size12) GridCell(g *grid12x12, row, col int) *Digits12 {
 	return &g[row*12+col]
-}
-
-func (s size12) PossibleLocations(g grid12x12, d Digits12) (a Area12x12) {
-	for row := 0; row < s.Size(); row++ {
-		for col := 0; col < s.Size(); col++ {
-			cell := s.GridCell(&g, row, col)
-			if !(*cell).And(d).Empty() {
-				a = a.With(CellLocation{row, col})
-			}
-		}
-	}
-	return
 }

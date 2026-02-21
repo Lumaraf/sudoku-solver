@@ -10,9 +10,6 @@ var ErrValueOutOfRange = errors.New("value out of range")
 type DigitsOps[D Digits[D]] interface {
 	NewDigits(values ...int) D
 	AllDigits() D
-	//IntersectDigits(d1 D, d2 D) D
-	//UnionDigits(d1 D, d2 D) D
-	//InvertDigits(d D) D
 }
 
 type Digits[D Digits[D]] interface {

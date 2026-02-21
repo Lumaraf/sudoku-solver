@@ -55,11 +55,10 @@ func (e ExclusionChainSolveProcessor[D, A]) Name() string {
 }
 
 func (e ExclusionChainSolveProcessor[D, A]) ProcessSolve(s Sudoku[D, A], cell CellLocation, mask D) error {
-	//v, _ := mask.Single()
-	//area := s.PossibleLocations(v)
-	//s.AreaWithout(&area, cell)
-	for _, excludedCell := range s.GetExclusionArea(cell).Locations {
-		//for _, excludedCell := range s.IntersectAreas(area, s.GetExclusionArea(cell)).Locations {
+	v, _ := mask.Single()
+	area := s.PossibleLocations(v).Without(cell)
+	for _, excludedCell := range area.And(s.GetExclusionArea(cell)).Locations {
+		//for _, excludedCell := range s.GetExclusionArea(cell).Locations {
 		if err := s.RemoveMask(excludedCell, mask); err != nil {
 			return err
 		}
@@ -93,17 +92,17 @@ type SudokuBuilder[D Digits[D], A Area[A]] interface {
 	Build() (Sudoku[D, A], error)
 }
 
-type sudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
-	*sudoku[D, A, G, S]
+type sudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G], GO gridOps[D, A, G]] struct {
+	*sudoku[D, A, G, S, GO]
 	solveProcessors SolveProcessors[D, A]
 }
 
-func newSudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G]]() SudokuBuilder[D, A] {
-	s := newSudoku[D, A, G, S]()
+func newSudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G], GO gridOps[D, A, G]]() SudokuBuilder[D, A] {
+	s := newSudoku[D, A, G, S, GO]()
 	s.changeProcessors = append(s.changeProcessors, SolveProcessors[D, A]{
 		ExclusionChainSolveProcessor[D, A]{},
 	})
-	return &sudokuBuilder[D, A, G, S]{
+	return &sudokuBuilder[D, A, G, S, GO]{
 		sudoku: s,
 		solveProcessors: SolveProcessors[D, A]{
 			ExclusionChainSolveProcessor[D, A]{},
@@ -111,19 +110,19 @@ func newSudokuBuilder[D Digits[D], A Area[A], G comparable, S size[D, A, G]]() S
 	}
 }
 
-func (s *sudokuBuilder[D, A, G, S]) buildTarget() Sudoku[D, A] {
+func (s *sudokuBuilder[D, A, G, S, GO]) buildTarget() Sudoku[D, A] {
 	return s.sudoku
 }
 
-func (s *sudokuBuilder[D, A, G, S]) SetCell(row, col, value int) error {
+func (s *sudokuBuilder[D, A, G, S, GO]) SetCell(row, col, value int) error {
 	return s.Set(CellLocation{row, col}, value)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) MaskCell(row, col int, mask D) error {
+func (s *sudokuBuilder[D, A, G, S, GO]) MaskCell(row, col int, mask D) error {
 	return s.Mask(CellLocation{row, col}, mask)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) Use(rules ...Rule[D, A]) error {
+func (s *sudokuBuilder[D, A, G, S, GO]) Use(rules ...Rule[D, A]) error {
 	for _, r := range rules {
 		if err := r.Apply(s); err != nil {
 			return err
@@ -132,28 +131,28 @@ func (s *sudokuBuilder[D, A, G, S]) Use(rules ...Rule[D, A]) error {
 	return nil
 }
 
-func (s *sudokuBuilder[D, A, G, S]) AddRestriction(r Restriction[D, A]) {
+func (s *sudokuBuilder[D, A, G, S, GO]) AddRestriction(r Restriction[D, A]) {
 	s.restrictions = append(s.restrictions, r)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) AddValidator(v Validator[D, A]) {
+func (s *sudokuBuilder[D, A, G, S, GO]) AddValidator(v Validator[D, A]) {
 	s.validators = append(s.validators, v)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) AddChangeProcessor(cp ChangeProcessor[D, A]) {
+func (s *sudokuBuilder[D, A, G, S, GO]) AddChangeProcessor(cp ChangeProcessor[D, A]) {
 	s.changeProcessors = append(s.changeProcessors, cp)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) AddSolveProcessor(sp SolveProcessor[D, A]) {
+func (s *sudokuBuilder[D, A, G, S, GO]) AddSolveProcessor(sp SolveProcessor[D, A]) {
 	s.solveProcessors = append(s.solveProcessors, sp)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) AddExclusionArea(l CellLocation, a A) {
+func (s *sudokuBuilder[D, A, G, S, GO]) AddExclusionArea(l CellLocation, a A) {
 	a = a.Without(l)
 	s.exclusionAreas[l.Row][l.Col] = s.exclusionAreas[l.Row][l.Col].Or(a)
 }
 
-func (s *sudokuBuilder[D, A, G, S]) Build() (Sudoku[D, A], error) {
+func (s *sudokuBuilder[D, A, G, S, GO]) Build() (Sudoku[D, A], error) {
 	s.changeProcessors[0] = s.solveProcessors
 	for row := 0; row < s.Size(); row++ {
 		for col := 0; col < s.Size(); col++ {

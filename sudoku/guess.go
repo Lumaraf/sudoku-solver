@@ -28,11 +28,11 @@ type Guesser[D Digits[D], A Area[A]] interface {
 	Guess(g GuessSelector[D, A], ctx context.Context) func(func(Sudoku[D, A]) bool)
 }
 
-type guesser[D Digits[D], A Area[A], G comparable, S size[D, A, G]] struct {
-	*solver[D, A, G, S]
+type guesser[D Digits[D], A Area[A], G comparable, S size[D, A, G], GO gridOps[D, A, G]] struct {
+	*solver[D, A, G, S, GO]
 }
 
-func (g *guesser[D, A, G, S]) Guess(gs GuessSelector[D, A], ctx context.Context) func(func(Sudoku[D, A]) bool) {
+func (g *guesser[D, A, G, S, GO]) Guess(gs GuessSelector[D, A], ctx context.Context) func(func(Sudoku[D, A]) bool) {
 	return func(yield func(Sudoku[D, A]) bool) {
 		strategies := g.createStrategies()
 
@@ -58,9 +58,9 @@ func (g *guesser[D, A, G, S]) Guess(gs GuessSelector[D, A], ctx context.Context)
 	}
 }
 
-func (g *guesser[D, A, G, S]) guessSolutions(s *sudoku[D, A, G, S], solvers []Strategy[D, A], gs GuessSelector[D, A], path []CellLocation, ctx context.Context) func(yield func(sudoku[D, A, G, S]) bool) {
+func (g *guesser[D, A, G, S, GO]) guessSolutions(s *sudoku[D, A, G, S, GO], solvers []Strategy[D, A], gs GuessSelector[D, A], path []CellLocation, ctx context.Context) func(yield func(sudoku[D, A, G, S, GO]) bool) {
 	g.sudoku.stats.GuesserRuns++
-	return func(yield func(sudoku[D, A, G, S]) bool) {
+	return func(yield func(sudoku[D, A, G, S, GO]) bool) {
 		baseClone := *s
 		baseClone.logger = voidLogger[D]{}
 
@@ -107,9 +107,9 @@ func (g *guesser[D, A, G, S]) guessSolutions(s *sudoku[D, A, G, S], solvers []St
 	}
 }
 
-func (s *sudoku[D, A, G, S]) NewGuesser() Guesser[D, A] {
-	return &guesser[D, A, G, S]{
-		solver: &solver[D, A, G, S]{
+func (s *sudoku[D, A, G, S, GO]) NewGuesser() Guesser[D, A] {
+	return &guesser[D, A, G, S, GO]{
+		solver: &solver[D, A, G, S, GO]{
 			sudoku: s,
 		},
 	}
