@@ -70,9 +70,26 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(su
 		}
 	}
 
-	// overlay patterns and eliminate impossible options
+	// create bitmasks of compatible patterns for higher values
+	for v, patterns := range valuePatterns {
+		for idx, p := range patterns {
+			masks := make([][]uint64, 0, len(valuePatterns)-v-1)
+			for _, otherPatterns := range valuePatterns[v+1:] {
+				mask := make([]uint64, len(otherPatterns)/64+1)
+				for i, op := range otherPatterns {
+					intersection := p.area.And(op.area)
+					if intersection.Empty() {
+						mask[i/64] |= 1 << (i % 64)
+					}
+				}
+				masks = append(masks, mask)
+			}
+			valuePatterns[v][idx].masks = masks
+		}
+	}
+
 	patternUnions := make([]A, s.Size())
-	for vp := range st.findValidPatterns(s, s.NewArea(), valuePatterns) {
+	for vp := range st.findValidPatterns(valuePatterns) {
 		patternUnions[vp.value-1] = patternUnions[vp.value-1].Or(vp.area)
 	}
 
@@ -97,6 +114,7 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(su
 type valuePattern[A sudoku.Area[A]] struct {
 	value int
 	area  A
+	masks [][]uint64
 }
 
 func (st PatternOverlayStrategy[D, A]) findPlacementPatterns(s sudoku.Sudoku[D, A], valueArea A, requiredAreas []A) func(func(A) bool) {
@@ -121,31 +139,76 @@ func (st PatternOverlayStrategy[D, A]) findPlacementPatterns(s sudoku.Sudoku[D, 
 	}
 }
 
-func (st PatternOverlayStrategy[D, A]) findValidPatterns(s sudoku.Sudoku[D, A], pattern A, valuePatterns [][]valuePattern[A]) func(func(valuePattern[A]) bool) {
+func (st PatternOverlayStrategy[D, A]) findValidPatterns(valuePatterns [][]valuePattern[A]) func(func(valuePattern[A]) bool) {
 	return func(yield func(valuePattern[A]) bool) {
-		for _, otherPattern := range valuePatterns[0] {
-			intersection := pattern.And(otherPattern.area)
-			if !intersection.Empty() {
-				continue
-			}
-
+		for _, pattern := range valuePatterns[0] {
 			matched := false
-			if len(valuePatterns) == 1 {
+			for vp := range st.combinePatterns(pattern.masks, valuePatterns[1:]) {
 				matched = true
-			} else {
-				for vp := range st.findValidPatterns(s, pattern.Or(otherPattern.area), valuePatterns[1:]) {
-					matched = true
-					if !yield(vp) {
-						return
-					}
+				if !yield(vp) {
+					return
 				}
 			}
 			if matched {
-				if !yield(otherPattern) {
+				if !yield(pattern) {
 					return
 				}
 			}
 		}
-		return
+	}
+}
+
+func (st PatternOverlayStrategy[D, A]) combinePatterns(masks [][]uint64, valuePatterns [][]valuePattern[A]) func(func(valuePattern[A]) bool) {
+	return func(yield func(valuePattern[A]) bool) {
+		mask := masks[0]
+		if len(masks) == 1 {
+			for i, pattern := range valuePatterns[0] {
+				if mask[i/64]&(1<<(i%64)) != 0 {
+					if !yield(pattern) {
+						return
+					}
+				}
+			}
+			return
+		}
+
+		masks = masks[1:]
+
+	patternLoop:
+		for i, pattern := range valuePatterns[0] {
+			if mask[i/64]&(1<<(i%64)) == 0 {
+				continue
+			}
+
+			// combine masks
+			combinedMasks := make([][]uint64, len(masks))
+			for idx, inputMask := range masks {
+				combinedMask := make([]uint64, len(inputMask))
+				matched := false
+				for j, m := range inputMask {
+					combinedMask[j] = m & pattern.masks[idx][j]
+					if combinedMask[j] != 0 {
+						matched = true
+					}
+				}
+				if !matched {
+					continue patternLoop
+				}
+				combinedMasks[idx] = combinedMask
+			}
+
+			matched := false
+			for vp := range st.combinePatterns(combinedMasks, valuePatterns[1:]) {
+				matched = true
+				if !yield(vp) {
+					return
+				}
+			}
+			if matched {
+				if !yield(pattern) {
+					return
+				}
+			}
+		}
 	}
 }
