@@ -16,7 +16,7 @@ func TestClassicRules(t *testing.T) {
 	for row := 0; row < 9; row++ {
 		for col := 0; col < 9; col++ {
 			l := sudoku.CellLocation{row, col}
-			assert.Equal(t, 20, s.GetExclusionArea(l).Size())
+			assert.Equal(t, 20, s.GetExclusionArea(l).Count())
 		}
 	}
 }

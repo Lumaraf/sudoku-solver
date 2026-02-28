@@ -18,7 +18,7 @@ func KillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Su
 
 		masks := make([]D, 0)
 		for _, m := range allMasks[r.Sum()] {
-			if m.Count() == r.Area().Size() {
+			if m.Count() == r.Area().Count() {
 				masks = append(masks, m)
 			}
 		}

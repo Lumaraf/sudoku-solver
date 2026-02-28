@@ -33,7 +33,7 @@ func (st UniqueSetStrategy[D, A]) AreaFilter() A {
 }
 
 func (st UniqueSetStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
-	cells := make([]D, 0, st.Area.Size())
+	cells := make([]D, 0, st.Area.Count())
 	for _, cell := range st.Area.Locations {
 		d := s.Get(cell)
 		if d.Count() == 1 {

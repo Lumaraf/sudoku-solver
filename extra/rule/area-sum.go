@@ -42,11 +42,21 @@ type KillerCageRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 
 func (r KillerCageRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	area := sb.NewArea(r.Area...)
-	sb.AddRestriction(AreaSumRestriction[D, A]{
-		area: area,
-		sum:  r.Sum,
-	})
-	return sb.Use(rule.NewUniqueAreaRule[D, A]("killer cage", area))
+	//sb.AddRestriction(AreaSumRestriction[D, A]{
+	//	area: area,
+	//	sum:  r.Sum,
+	//})
+	//sb.AddValidator(AreaSumValidator[D, A]{
+	//	area: area,
+	//	sum:  r.Sum,
+	//})
+	return sb.Use(
+		rule.NewUniqueAreaRule[D, A]("killer cage", area),
+		AreaSumRule[D, A]{
+			Area: r.Area,
+			Sum:  r.Sum,
+		},
+	)
 }
 
 type AreaSumRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
@@ -61,6 +71,10 @@ func (r AreaSumRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 		sum:  r.Sum,
 	})
 	sb.AddValidator(AreaSumValidator[D, A]{
+		area: area,
+		sum:  r.Sum,
+	})
+	sb.AddSolveProcessor(AreaSumSolveProcessor[D, A]{
 		area: area,
 		sum:  r.Sum,
 	})
@@ -103,6 +117,40 @@ func (v AreaSumValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 	}
 	if areaMin > v.sum || areaMax < v.sum {
 		return ErrInvalidAreaSum
+	}
+	return nil
+}
+
+type AreaSumSolveProcessor[D sudoku.Digits[D], A sudoku.Area[A]] struct {
+	area A
+	sum  int
+}
+
+func (p AreaSumSolveProcessor[D, A]) Name() string {
+	return "AreaSumSolveProcessor"
+}
+
+func (p AreaSumSolveProcessor[D, A]) ProcessSolve(s sudoku.Sudoku[D, A], cell sudoku.CellLocation, mask D) error {
+	if !p.area.Get(cell) {
+		return nil
+	}
+
+	// if all except for one cell in the area are solved, we can determine the value of the last cell
+	solved := p.area.And(s.SolvedArea())
+	if solved.Count() == p.area.Count()-1 {
+		sum := 0
+		for _, solvedCell := range solved.Locations {
+			d, _ := s.Get(solvedCell).Single()
+			sum += d
+		}
+		v := p.sum - sum
+		if v <= 0 || v > s.Size() {
+			return ErrInvalidAreaSum
+		}
+		unsolved := p.area.And(solved.Not())
+		for _, unsolvedCell := range unsolved.Locations {
+			return s.Set(unsolvedCell, p.sum-sum)
+		}
 	}
 	return nil
 }

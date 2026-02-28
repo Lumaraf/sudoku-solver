@@ -159,7 +159,7 @@ func (s *sudoku[D, A, G, S, GO]) Column(col int) (a A) {
 func (s *sudoku[D, A, G, S, GO]) Box(box int) (a A) {
 	return s.boxes[box]
 	//boxRows, boxCols := s.BoxSize()
-	//boxesPerCol := s.Size() / boxCols
+	//boxesPerCol := s.Count() / boxCols
 	//rowOffset := (box / boxesPerCol) * boxRows
 	//colOffset := (box % boxesPerCol) * boxCols
 	//for row := 0; row < boxRows; row++ {

@@ -10,7 +10,7 @@ func UniqueExclusionStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudo
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
-		if a.Size() < s.Size() {
+		if a.Count() < s.Size() {
 			continue
 		}
 
@@ -58,7 +58,7 @@ func (st UniqueExclusionStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(s
 
 		v += 1
 		var changed A
-		clones := make([]sudoku.Sudoku[D, A], 0, a.Size())
+		clones := make([]sudoku.Sudoku[D, A], 0, a.Count())
 		for _, l := range a.Locations {
 			_ = s.Try(func(s sudoku.Sudoku[D, A]) error {
 				if err := s.Set(l, v); err != nil {

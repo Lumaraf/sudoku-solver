@@ -1,6 +1,45 @@
-# sudoku solver
+# Sudoku Solver
 
-## Implementing a Strategy
+This is a Sudoku solver implemented in Go, designed to be flexible and extensible.
+
+- support for different grid sizes (e.g., 6x6, 9x9, 16x16) through generics
+- a modular strategy system for implementing various solving techniques
+- optional backtracking via the `Guesser` api for puzzles that have multiple solutions or can't be solved with the available strategies
+- multi solver support for puzzles that overlay multiple grids (e.g., Samurai Sudoku)
+
+## Concepts
+
+TODO
+
+## Areas
+
+Areas represent groups of cells in the Sudoku grid, such as rows, columns, boxes, or custom-defined areas. They are used to apply rules and strategies that involve multiple cells. Each area type implements the `Area` interface, which provides methods for iterating over cells, checking for the presence of specific cells, changing and combining areas,
+
+## Digits
+
+Digits represent the possible values that can be placed in a cell. The `Digits` interface provides methods for managing candidate digits in a cell, such as adding, removing, checking for specific digits and combining sets of digits.
+
+## Rules
+
+### Available Rules
+
+- **ClassicRules** - The standard Sudoku rules: each digit must appear exactly once in each row, column, and box.
+- **GivenDigits** - The initial clues provided in the puzzle.
+- **DiagonalRule** - For Sudoku variants with diagonal constraints, digits must also be unique along the main diagonals.
+- **DisjointAreaRule** - Digits in the same location in each box must be unique. Also known as "Color Sudoku".
+- **UniqueAreaRule** - Defines that a set of cells (an area) must contain unique digits.
+- **KillerCageRule** - For Killer Sudoku, defines that a cage of cells must sum to a specific value without repeating digits.
+- **AreaSumRule** - All cells in an area must sum to a specific value. Digits may repeat.
+- **NonConsecutiveRule** - No two adjacent cells may contain consecutive digits.
+- **ParityRule** - Cells must contain either only odd or only even digits.
+- **AntiKingRule** - No two cells that are a king's move apart may contain the same digit.
+- **AntiKnightRule** - No two cells that are a knight's move apart may contain the same digit.
+
+### Implementing Custom Rules
+
+TODO
+
+## Strategies
 
 A **strategy** in this solver is a modular technique for deducing new information about the puzzle state, such as eliminating candidates or solving cells. Strategies are registered with the solver and applied automatically.
 
@@ -60,40 +99,7 @@ The solver is highly generic and type-safe, using Go generics for digits and are
 - `Try(func(Sudoku[D, A]) error) error`: Clone and test a hypothetical change.
 - `Validate() error`: Check puzzle validity.
 - `Print() error`: Print the current state.
-
-#### Methods for Working with Digits (Candidates)
-
-- `NewDigits(values ...int) D`: Create a digit set from a list of values.
-- `AllDigits() D`: Get a digit set containing all possible digits.
-- `IntersectDigits(d1 D, d2 D) D`: Intersection of two digit sets.
-- `UnionDigits(d1 D, d2 D) D`: Union of two digit sets.
-- `InvertDigits(d D) D`: Invert a digit set (all digits not present in `d`).
-
-#### Methods for Working with Areas (Sets of Cells)
-
-- `NewArea(locs ...CellLocation) A`: Create an area from a list of cell locations.
-- `NewAreaFromOffsets(center CellLocation, o Offsets) A`: Create an area from a center cell and a set of offsets.
-- `AreaWith(a *A, l CellLocation)`: Add a cell to an area.
-- `AreaWithout(a *A, l CellLocation)`: Remove a cell from an area.
-- `IntersectAreas(a1 A, a2 A) A`: Intersection of two areas.
-- `UnionAreas(a1 A, a2 A) A`: Union of two areas.
-- `InvertArea(a A) A`: Invert an area (all cells not present in `a`).
-
-- **Digits** (`sudoku/digits.go`):  
-  Represents possible values in a cell. Key methods:
-  - `CanContain(v int) bool`
-  - `Empty() bool`
-  - `Count() int`
-  - `Single() (int, bool)`
-  - `Values(func(int) bool)`
-
-- **Area** (`sudoku/area.go`):  
-  Represents a set of cells. Key methods:
-  - `Get(l CellLocation) bool`
-  - `Locations(func(int, CellLocation) bool)`
-  - `Size() int`
-  - `Empty() bool`
-
+  
 - **StrategyFactory** (`sudoku/solve.go`):  
   Used to create strategies for a puzzle.
 
@@ -117,5 +123,3 @@ To implement a strategy, you typically:
 - Use the digits and area methods above for set operations on digits and areas.
 
 ---
-
-This documentation should help you and contributors understand how to add new strategies and interact with the Sudoku API. If you need a code example or more details on a specific part, see the provided strategy files or ask for further clarification.

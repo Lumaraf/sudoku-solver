@@ -39,6 +39,11 @@ func (r UniqueAreaRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	for _, cell := range r.area.Locations {
 		sb.AddExclusionArea(cell, r.area)
 	}
+	if r.area.Count() == sb.Size() {
+		sb.AddChangeProcessor(UniqueIntersectionChangeProcessor[D, A]{
+			area: r.area,
+		})
+	}
 	return nil
 }
 
@@ -129,8 +134,52 @@ func (v UniqueValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 		d := s.Get(cell)
 		mask = mask.Or(d)
 	}
-	if mask.Count() < v.area.Size() {
+	if mask.Count() < v.area.Count() {
 		return ErrTooFewDigits
+	}
+	return nil
+}
+
+type UniqueIntersectionChangeProcessor[D sudoku.Digits[D], A sudoku.Area[A]] struct {
+	area A
+}
+
+func (cp UniqueIntersectionChangeProcessor[D, A]) Name() string {
+	return "Unique Intersection"
+}
+
+func (cp UniqueIntersectionChangeProcessor[D, A]) ProcessChange(s sudoku.Sudoku[D, A], cell sudoku.CellLocation, mask D) error {
+	if !cp.area.Get(cell) {
+		return nil
+	}
+
+	if cp.area.And(s.NextChangedArea()).Empty() {
+		return nil
+	}
+
+	valueCounts := make(map[int]int, s.Size())
+	valueExclusionAreas := make(map[int]A, s.Size())
+	for i := range s.Size() {
+		valueExclusionAreas[i] = s.NewArea().All()
+	}
+	for _, l := range cp.area.Locations {
+		d := s.Get(l)
+		for v := range d.Values {
+			valueCounts[v-1]++
+			valueExclusionAreas[v-1] = valueExclusionAreas[v-1].And(s.GetExclusionArea(l))
+		}
+	}
+	for v, area := range valueExclusionAreas {
+		if valueCounts[v] <= 1 {
+			continue
+		}
+
+		area = area.And(cp.area.Not())
+		for _, l := range area.Locations {
+			if err := s.RemoveOption(l, v+1); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

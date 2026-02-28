@@ -45,7 +45,7 @@ func TestGivenDigits(t *testing.T) {
 				GivenDigitsFromString[sudoku.Digits9, sudoku.Area9x9](test.rows...),
 			)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expectSolved, s.SolvedArea().Size())
+			assert.Equal(t, test.expectSolved, s.SolvedArea().Count())
 		})
 	}
 }

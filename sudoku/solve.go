@@ -199,7 +199,7 @@ func (s *sudoku[D, A, G, S, GO]) setSolved(l CellLocation) {
 }
 
 func (s *sudoku[D, A, G, S, GO]) IsSolved() bool {
-	return s.solved.Size() == s.Size()*s.Size()
+	return s.solved.Count() == s.Size()*s.Size()
 }
 
 func (s *sudoku[D, A, G, S, GO]) NewSolver() Solver[D, A] {

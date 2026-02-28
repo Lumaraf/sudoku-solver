@@ -5,26 +5,36 @@ import (
 	"github.com/lumaraf/sudoku-solver/sudoku"
 )
 
+const maxPatterns = 500
+
 // finds all possible placement patterns for every digit and overlays them to eliminate impossible options
 func PatternOverlayStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D, A]) []sudoku.Strategy[D, A] {
 	requiredAreas := make([]A, 0, s.Size()*3)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
-		if a.Size() == s.Size() {
+		if a.Count() == s.Size() {
 			requiredAreas = append(requiredAreas, a)
 		}
 	}
 
+	var offsetMaskRestriction *sudoku.OffsetMaskRestriction[D, A]
+	for r := range sudoku.GetRestrictions[D, A, sudoku.OffsetMaskRestriction[D, A]](s) {
+		offsetMaskRestriction = &r
+		break
+	}
+
 	return []sudoku.Strategy[D, A]{PatternOverlayStrategy[D, A]{
-		area:          s.NewArea().Not(),
-		requiredAreas: requiredAreas,
+		area:                  s.NewArea().Not(),
+		requiredAreas:         requiredAreas,
+		offsetMaskRestriction: offsetMaskRestriction,
 	}}
 }
 
 type PatternOverlayStrategy[D sudoku.Digits[D], A sudoku.Area[A]] struct {
-	area          A
-	requiredAreas []A
-	extraAreas    []A
+	area                  A
+	requiredAreas         []A
+	extraAreas            []A
+	offsetMaskRestriction *sudoku.OffsetMaskRestriction[D, A]
 }
 
 func (st PatternOverlayStrategy[D, A]) Name() string {
@@ -53,31 +63,65 @@ func (st PatternOverlayStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(su
 		}
 	}
 
-	count := 0
+	countExceeded := false
 	valuePatterns := make([][]valuePattern[A], s.Size())
 	for v, valueArea := range valueAreas {
+		count := 0
+		combinedArea := s.NewArea()
 		valuePatterns[v] = make([]valuePattern[A], 0, s.Size())
 		for area := range st.findPlacementPatterns(s, valueArea, st.requiredAreas) {
 			valuePatterns[v] = append(valuePatterns[v], valuePattern[A]{
 				area:  area,
 				value: v + 1,
 			})
+			combinedArea = combinedArea.Or(area)
 			count++
-			if count > 1000 {
-				push(st)
-				return nil
+			if count > maxPatterns {
+				countExceeded = true
+				if combinedArea == combinedArea.All() {
+					break
+				}
+			}
+		}
+
+		if count > maxPatterns {
+			intersection := valueArea.And(combinedArea.Not())
+			if !intersection.Empty() {
+				for _, l := range intersection.Locations {
+					if err := s.RemoveOption(l, v+1); err != nil {
+						return err
+					}
+				}
 			}
 		}
 	}
 
+	if countExceeded {
+		push(st)
+		return nil
+	}
+
 	// create bitmasks of compatible patterns for higher values
 	for v, patterns := range valuePatterns {
+		var offsetMasks map[sudoku.Offset]D
+		if st.offsetMaskRestriction != nil {
+			offsetMasks = st.offsetMaskRestriction.MasksForValue(v + 1)
+		}
 		for idx, p := range patterns {
 			masks := make([][]uint64, 0, len(valuePatterns)-v-1)
-			for _, otherPatterns := range valuePatterns[v+1:] {
+			for otherValue, otherPatterns := range valuePatterns[v+1:] {
+				area := p.area
+				if offsetMasks != nil {
+					for offset, mask := range offsetMasks {
+						if !mask.CanContain(otherValue + v + 2) {
+							area = area.Or(p.area.ShiftBy(offset))
+						}
+					}
+				}
+
 				mask := make([]uint64, len(otherPatterns)/64+1)
 				for i, op := range otherPatterns {
-					intersection := p.area.And(op.area)
+					intersection := area.And(op.area)
 					if intersection.Empty() {
 						mask[i/64] |= 1 << (i % 64)
 					}
@@ -127,7 +171,7 @@ func (st PatternOverlayStrategy[D, A]) findPlacementPatterns(s sudoku.Sudoku[D, 
 		intersection := valueArea.And(requiredAreas[0])
 		for _, l := range intersection.Locations {
 			candidateArea := valueArea.And(s.GetExclusionArea(l).Not())
-			if candidateArea.Size() < s.Size() {
+			if candidateArea.Count() < s.Size() {
 				continue
 			}
 			for pattern := range st.findPlacementPatterns(s, candidateArea, requiredAreas[1:]) {

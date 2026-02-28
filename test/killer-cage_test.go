@@ -54,7 +54,7 @@ func TestKillerCage(t *testing.T) {
 				},
 			),
 		},
-		//"besties 2": { // not yet solvable
+		//"besties 2": { // not yet solvable without guessing
 		//	rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
 		//	extraRule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
 		//	extraRule.KillerCageRulesFromString[sudoku.Digits9, sudoku.Area9x9](

@@ -108,9 +108,10 @@ func (g *guesser[D, A, G, S, GO]) guessSolutions(s *sudoku[D, A, G, S, GO], solv
 }
 
 func (s *sudoku[D, A, G, S, GO]) NewGuesser() Guesser[D, A] {
+	clone := *s
 	return &guesser[D, A, G, S, GO]{
 		solver: &solver[D, A, G, S, GO]{
-			sudoku: s,
+			sudoku: &clone,
 		},
 	}
 }

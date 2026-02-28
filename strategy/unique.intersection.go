@@ -10,7 +10,7 @@ func UniqueIntersectionStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s s
 	strategies := make([]sudoku.Strategy[D, A], 0)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
 		a := r.Area()
-		if a.Size() < s.Size() {
+		if a.Count() < s.Size() {
 			continue
 		}
 

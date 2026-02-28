@@ -43,6 +43,11 @@ func (a area256[AS]) All() area256[AS] {
 	return spec.allCells()
 }
 
+func (a area256[AS]) Size() int {
+	var spec AS
+	return spec.Size()
+}
+
 func (a area256[AS]) With(l CellLocation) area256[AS] {
 	index, mask := a.getMask(l)
 	a[index] = a[index] | mask
@@ -59,6 +64,165 @@ func (a area256[AS]) getMask(l CellLocation) (int, uint64) {
 	var spec AS
 	idx := l.Row*spec.Size() + l.Col
 	return idx / 64, 1 << (uint64(idx) % 64)
+}
+
+func (a area256[AS]) ShiftLeft(n int) area256[AS] {
+	var spec AS
+	size := spec.Size()
+	if n >= size {
+		return area256[AS]{0, 0, 0, 0}
+	}
+	shift := uint64(n)
+	if shift == 0 {
+		return a
+	}
+
+	a = area256[AS]{
+		(a[0] >> shift) | (a[1] << (64 - shift)),
+		(a[1] >> shift) | (a[2] << (64 - shift)),
+		(a[2] >> shift) | (a[3] << (64 - shift)),
+		a[3] >> shift,
+	}
+
+	// TODO find faster way to clear bits that wrap around to the next row
+	for row := 0; row < spec.Size(); row++ {
+		for col := spec.Size() - n; col < spec.Size(); col++ {
+			a = a.Without(CellLocation{row, col})
+		}
+	}
+
+	return a
+}
+
+func (a area256[AS]) ShiftRight(n int) area256[AS] {
+	var spec AS
+	size := spec.Size()
+	if n >= size {
+		return area256[AS]{0, 0, 0, 0}
+	}
+	shift := uint64(n)
+	if shift == 0 {
+		return a
+	}
+
+	a = area256[AS]{
+		a[0] << shift,
+		(a[1] << shift) | (a[0] >> (64 - shift)),
+		(a[2] << shift) | (a[1] >> (64 - shift)),
+		(a[3] << shift) | (a[2] >> (64 - shift)),
+	}
+
+	// TODO find faster way to clear bits that wrap around to the next row
+	for row := 0; row < spec.Size(); row++ {
+		for col := 0; col < n; col++ {
+			a = a.Without(CellLocation{row, col})
+		}
+	}
+
+	return a.And(a.All())
+}
+
+func (a area256[AS]) ShiftUp(n int) area256[AS] {
+	var spec AS
+	size := spec.Size()
+	if n >= size {
+		return area256[AS]{0, 0, 0, 0}
+	}
+	shift := uint64(n * size)
+	if shift == 0 {
+		return a
+	}
+	if shift < 64 {
+		return area256[AS]{
+			(a[0] >> shift) | (a[1] << (64 - shift)),
+			(a[1] >> shift) | (a[2] << (64 - shift)),
+			(a[2] >> shift) | (a[3] << (64 - shift)),
+			a[3] >> shift,
+		}
+	} else if shift < 128 {
+		s := shift - 64
+		return area256[AS]{
+			(a[1] >> s) | (a[2] << (64 - s)),
+			(a[2] >> s) | (a[3] << (64 - s)),
+			a[3] >> s,
+			0,
+		}
+	} else if shift < 192 {
+		s := shift - 128
+		return area256[AS]{
+			(a[2] >> s) | (a[3] << (64 - s)),
+			a[3] >> s,
+			0,
+			0,
+		}
+	} else {
+		s := shift - 192
+		return area256[AS]{
+			a[3] >> s,
+			0,
+			0,
+			0,
+		}
+	}
+}
+
+func (a area256[AS]) ShiftDown(n int) area256[AS] {
+	var spec AS
+	size := spec.Size()
+	if n >= size {
+		return area256[AS]{0, 0, 0, 0}
+	}
+	shift := uint64(n * size)
+	if shift == 0 {
+		return a
+	}
+	if shift < 64 {
+		return area256[AS]{
+			a[0] << shift,
+			(a[1] << shift) | (a[0] >> (64 - shift)),
+			(a[2] << shift) | (a[1] >> (64 - shift)),
+			(a[3] << shift) | (a[2] >> (64 - shift)),
+		}.And(a.All())
+	} else if shift < 128 {
+		s := shift - 64
+		return area256[AS]{
+			0,
+			a[0] << s,
+			(a[1] << s) | (a[0] >> (64 - s)),
+			(a[2] << s) | (a[1] >> (64 - s)),
+		}.And(a.All())
+	} else if shift < 192 {
+		s := shift - 128
+		return area256[AS]{
+			0,
+			0,
+			a[0] << s,
+			(a[1] << s) | (a[0] >> (64 - s)),
+		}.And(a.All())
+	} else {
+		s := shift - 192
+		return area256[AS]{
+			0,
+			0,
+			0,
+			a[0] << s,
+		}.And(a.All())
+	}
+
+}
+
+func (a area256[AS]) ShiftBy(offset Offset) area256[AS] {
+	if offset.Row > 0 {
+		a = a.ShiftDown(offset.Row)
+	} else if offset.Row < 0 {
+		a = a.ShiftUp(-offset.Row)
+	}
+	if offset.Col > 0 {
+		a = a.ShiftRight(offset.Col)
+	} else if offset.Col < 0 {
+		a = a.ShiftLeft(-offset.Col)
+	}
+	return a
 }
 
 func (a area256[AS]) Get(l CellLocation) bool {
@@ -148,7 +312,7 @@ func (a area256[AS]) nextCell(index int) CellLocation {
 	return CellLocation{}
 }
 
-func (a area256[AS]) Size() int {
+func (a area256[AS]) Count() int {
 	return bits.OnesCount64(a[0]) + bits.OnesCount64(a[1]) + bits.OnesCount64(a[2]) + bits.OnesCount64(a[3])
 }
 

@@ -153,7 +153,7 @@ func (v AntiMagicValidator[D, A]) Name() string {
 func (v AntiMagicValidator[D, A]) Validate(s sudoku.Sudoku[D, A]) error {
 	for a := range iterateMagicSets(s) {
 		a = a.And(s.SolvedArea())
-		if a.Size() != 3 {
+		if a.Count() != 3 {
 			continue
 		}
 
@@ -306,7 +306,7 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area[A]](sb sudoku.SudokuBuil
 	//checkAreas = append(checkAreas, falling, rising)
 	check := func(area A) bool {
 		for _, ca := range checkAreas {
-			if area.And(ca).Size() > 4 {
+			if area.And(ca).Count() > 4 {
 				return false
 			}
 		}
@@ -319,7 +319,7 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area[A]](sb sudoku.SudokuBuil
 		return func(yield func(A) bool) {
 			for r := searchRow; r < sb.Size(); r++ {
 				row := sb.Row(r)
-				if a.And(row).Size() < 4 {
+				if a.And(row).Count() < 4 {
 					searchRow = r
 					break
 				}
@@ -334,14 +334,14 @@ func tetrisPlacements[D sudoku.Digits[D], A sudoku.Area[A]](sb sudoku.SudokuBuil
 						continue
 					}
 					placement := sb.NewAreaFromOffsets(l, shape)
-					if blocked.Or(placement).Size() != blocked.Size()+4 {
+					if blocked.Or(placement).Count() != blocked.Count()+4 {
 						continue
 					}
 					newArea := a.Or(placement)
 					if !check(newArea) {
 						continue
 					}
-					if newArea.Size() == 9*4 {
+					if newArea.Count() == 9*4 {
 						if !yield(newArea) {
 							return
 						}

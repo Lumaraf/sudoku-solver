@@ -22,26 +22,26 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sud
 	// find hidden cages
 	knownCages := map[A]bool{}
 	for baseArea := range hiddenCageBaseAreas[D, A](s) {
-		baseSum := (s.Size() * (s.Size() + 1) / 2) * (baseArea.Size() / s.Size())
+		baseSum := (s.Size() * (s.Size() + 1) / 2) * (baseArea.Count() / s.Size())
 
 		hits := 0
 		for _, r2 := range areaSumRestrictions {
-			if baseArea.Or(r2.Area()).Size() == baseArea.Size() {
+			if baseArea.Or(r2.Area()).Count() == baseArea.Count() {
 				hits++
 				baseArea = baseArea.And(r2.Area().Not())
 				baseSum -= r2.Sum()
 			}
 		}
 
-		if hits > 1 && baseArea.Size() < s.Size() && s.IsUniqueArea(baseArea) {
+		if hits > 1 && baseArea.Count() < s.Size() && s.IsUniqueArea(baseArea) {
 			if knownCages[baseArea] {
 				continue
 			}
 			knownCages[baseArea] = true
-			//fmt.Printf("Hidden cage found: sum=%d site=%d\n", baseSum, baseArea.Size())
+			//fmt.Printf("Hidden cage found: sum=%d site=%d\n", baseSum, baseArea.Count())
 			masks := make([]D, 0)
 			for _, m := range allMasks[baseSum] {
-				if m.Count() == baseArea.Size() {
+				if m.Count() == baseArea.Count() {
 					masks = append(masks, m)
 				}
 			}
@@ -57,7 +57,7 @@ func HiddenKillerCageStrategyFactory[D sudoku.Digits[D], A sudoku.Area[A]](s sud
 					if !area.Empty() {
 						masks := make([]D, 0)
 						for _, m := range allMasks[r2.Sum()-baseSum] {
-							if m.Count() == area.Size() {
+							if m.Count() == area.Count() {
 								masks = append(masks, m)
 							}
 						}
@@ -79,7 +79,7 @@ func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D
 	combineAreas = func(current A, ua []A) func(func(A) bool) {
 		return func(yield func(A) bool) {
 			for _, a := range ua {
-				if current.Or(a).Size() != current.Size()+a.Size() {
+				if current.Or(a).Count() != current.Count()+a.Count() {
 					continue
 				}
 
@@ -91,7 +91,7 @@ func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D
 				if !yield(union) {
 					return
 				}
-				if union.Size()/s.Size() < 4 {
+				if union.Count()/s.Size() < 4 {
 					for combinedArea := range combineAreas(union, ua[1:]) {
 						if !yield(combinedArea) {
 							return
@@ -104,7 +104,7 @@ func hiddenCageBaseAreas[D sudoku.Digits[D], A sudoku.Area[A]](s sudoku.Sudoku[D
 
 	uniqueAreas := make([]A, 0, s.Size()*3)
 	for r := range sudoku.GetRestrictions[D, A, rule.UniqueRestriction[D, A]](s) {
-		if r.Area().Size() == s.Size() {
+		if r.Area().Count() == s.Size() {
 			uniqueAreas = append(uniqueAreas, r.Area())
 		}
 	}

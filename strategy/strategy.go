@@ -13,7 +13,7 @@ func AllStrategies[D sudoku.Digits[D], A sudoku.Area[A]]() sudoku.StrategyFactor
 		// UniqueIntersectionStrategy:
 		// Identifies intersections between units (e.g. row and box) where candidates are restricted to a shared subset of cells.
 		// Eliminates these candidates from other cells in the intersecting unit. This is also called "pointing pairs/triples" or "box-line reduction".
-		sudoku.StrategyFactoryFunc[D, A](UniqueIntersectionStrategyFactory[D, A]),
+		//sudoku.StrategyFactoryFunc[D, A](UniqueIntersectionStrategyFactory[D, A]),
 
 		// LogicChainStrategy:
 		// Uses chains of logical implications to deduce eliminations. It simulates placing a candidate and follows the consequences,

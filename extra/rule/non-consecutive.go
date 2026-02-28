@@ -23,36 +23,11 @@ func (r NonConsecutiveRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 		masks[v] = sb.NewDigits(digits...).Not()
 	}
 
-	sb.AddChangeProcessor(NonConsecutiveChangeProcessor[D, A]{
-		masks: masks,
-		offsets: sudoku.Offsets{
-			{-1, 0},
-			{1, 0},
-			{0, -1},
-			{0, 1},
-		},
-	})
-	return nil
-}
-
-type NonConsecutiveChangeProcessor[D sudoku.Digits[D], A sudoku.Area[A]] struct {
-	masks   map[int]D
-	offsets sudoku.Offsets
-}
-
-func (p NonConsecutiveChangeProcessor[D, A]) Name() string {
-	return "Non-Consecutive Change Processor"
-}
-
-func (p NonConsecutiveChangeProcessor[D, A]) ProcessChange(s sudoku.Sudoku[D, A], cell sudoku.CellLocation, mask D) error {
-	combinedMask := s.NewDigits()
-	for v := range mask.Values {
-		combinedMask = combinedMask.Or(p.masks[v])
-	}
-	for _, l := range s.NewAreaFromOffsets(cell, p.offsets).Locations {
-		if err := s.Mask(l, combinedMask); err != nil {
-			return err
-		}
+	for v := 1; v <= sb.Size(); v++ {
+		sb.AddOffsetMask(v, sudoku.Offset{-1, 0}, masks[v])
+		sb.AddOffsetMask(v, sudoku.Offset{1, 0}, masks[v])
+		sb.AddOffsetMask(v, sudoku.Offset{0, -1}, masks[v])
+		sb.AddOffsetMask(v, sudoku.Offset{0, 1}, masks[v])
 	}
 	return nil
 }

@@ -37,6 +37,11 @@ func (a area128[AS]) All() area128[AS] {
 	return spec.allCells()
 }
 
+func (a area128[AS]) Size() int {
+	var spec AS
+	return spec.Size()
+}
+
 func (a area128[AS]) With(l CellLocation) area128[AS] {
 	index, mask := a.getMask(l)
 	a[index] = a[index] | mask
@@ -53,6 +58,100 @@ func (a area128[AS]) getMask(l CellLocation) (int, uint64) {
 	var spec AS
 	idx := l.Row*spec.Size() + l.Col
 	return idx / 64, 1 << (uint64(idx) % 64)
+}
+
+func (a area128[AS]) ShiftLeft(n int) area128[AS] {
+	var spec AS
+	if n >= spec.Size() {
+		return area128[AS]{0, 0}
+	}
+
+	a = area128[AS]{
+		(a[0] >> uint64(n)) | (a[1] << (64 - uint64(n))),
+		a[1] >> uint64(n),
+	}
+
+	// TODO find faster way to clear bits that wrap around to the next row
+	for row := 0; row < spec.Size(); row++ {
+		for col := spec.Size() - n; col < spec.Size(); col++ {
+			a = a.Without(CellLocation{row, col})
+		}
+	}
+
+	return a
+}
+
+func (a area128[AS]) ShiftRight(n int) area128[AS] {
+	var spec AS
+	if n >= spec.Size() {
+		return area128[AS]{0, 0}
+	}
+
+	a = area128[AS]{
+		a[0] << uint64(n),
+		(a[1] << uint64(n)) | (a[0] >> (64 - uint64(n))),
+	}
+
+	// TODO find faster way to clear bits that wrap around to the next row
+	for row := 0; row < spec.Size(); row++ {
+		for col := 0; col < n; col++ {
+			a = a.Without(CellLocation{row, col})
+		}
+	}
+
+	return a.And(a.All())
+}
+
+func (a area128[AS]) ShiftUp(n int) area128[AS] {
+	var spec AS
+	if n >= spec.Size() {
+		return area128[AS]{0, 0}
+	}
+
+	shift := uint64(n * spec.Size())
+	if shift >= 64 {
+		return area128[AS]{
+			a[1] >> (shift - 64),
+			0,
+		}
+	}
+	return area128[AS]{
+		(a[0] >> shift) | (a[1] << (64 - shift)),
+		a[1] >> shift,
+	}
+}
+
+func (a area128[AS]) ShiftDown(n int) area128[AS] {
+	var spec AS
+	if n >= spec.Size() {
+		return area128[AS]{0, 0}
+	}
+
+	shift := uint64(n * spec.Size())
+	if shift >= 64 {
+		return area128[AS]{
+			0,
+			a[0] << (shift - 64),
+		}.And(a.All())
+	}
+	return area128[AS]{
+		a[0] << shift,
+		(a[1]<<shift | a[0]>>(64-shift)),
+	}.And(a.All())
+}
+
+func (a area128[AS]) ShiftBy(offset Offset) area128[AS] {
+	if offset.Row > 0 {
+		a = a.ShiftDown(offset.Row)
+	} else if offset.Row < 0 {
+		a = a.ShiftUp(-offset.Row)
+	}
+	if offset.Col > 0 {
+		a = a.ShiftRight(offset.Col)
+	} else if offset.Col < 0 {
+		a = a.ShiftLeft(-offset.Col)
+	}
+	return a
 }
 
 func (a area128[AS]) Get(l CellLocation) bool {
@@ -105,7 +204,7 @@ func (a area128[AS]) nextCell(index int) CellLocation {
 	return CellLocation{}
 }
 
-func (a area128[AS]) Size() int {
+func (a area128[AS]) Count() int {
 	return bits.OnesCount64(a[0]) + bits.OnesCount64(a[1])
 }
 

@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 type SudokuTests[D sudoku.Digits[D], A sudoku.Area[A]] map[string][]sudoku.Rule[D, A]
 
 func (tests SudokuTests[D, A]) Run(t *testing.T, builderFunc func() sudoku.SudokuBuilder[D, A]) {
+	//t.Parallel()
 	for name, rules := range tests {
 		t.Run(name, func(t *testing.T) {
 			//t.Parallel()
@@ -38,12 +38,12 @@ func (tests SudokuTests[D, A]) Run(t *testing.T, builderFunc func() sudoku.Sudok
 
 			slv := s.NewSolver()
 			slv.Use(strategy.AllStrategies[D, A](), extraStrategy.AllExtraStrategies[D, A]())
-			slv.SetChainLimit(3)
+			slv.SetChainLimit(0)
 			assert.NoError(t, slv.Solve(ctx))
 			if !assert.True(t, s.IsSolved()) {
 				s.Print()
 			}
-			fmt.Printf("Stats: %+v\n", s.Stats())
+			//fmt.Printf("Stats: %+v\n", s.Stats())
 		})
 	}
 }

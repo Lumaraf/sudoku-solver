@@ -28,23 +28,43 @@ func (slv LogicChainStrategy[D, A]) AreaFilter() A {
 }
 
 func (slv LogicChainStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudoku.Strategy[D, A])) error {
-	for _, cell := range s.ChangedArea().Locations {
+	for _, cell := range s.SolvedArea().Not().Locations {
 		d := s.Get(cell)
-		if d.Count() >= 2 {
-			for v := range d.Values {
-				err := s.Try(func(s sudoku.Sudoku[D, A]) error {
-					err := s.Set(cell, v)
-					if err == nil {
-						err = s.Validate()
-					}
-					return err
-				})
-				if err != nil {
-					err = s.RemoveOption(cell, v)
-					if err != nil {
-						return err
-					}
+		results := make([]sudoku.Sudoku[D, A], 0, d.Count())
+		for v := range d.Values {
+			err := s.Try(func(s sudoku.Sudoku[D, A]) error {
+				err := s.Set(cell, v)
+				if err == nil {
+					err = s.Validate()
 				}
+				if err == nil {
+					results = append(results, s)
+				}
+				return err
+			})
+			if err != nil {
+				err = s.RemoveOption(cell, v)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if len(results) == 0 {
+			continue
+		}
+
+		affectedArea := s.NewArea().All()
+		for _, r := range results {
+			affectedArea = affectedArea.And(r.NextChangedArea())
+		}
+		for _, l := range affectedArea.Locations {
+			mask := s.AllDigits()
+			for _, r := range results {
+				mask = mask.And(r.Get(l).Not())
+			}
+			if err := s.RemoveMask(l, mask); err != nil {
+				return err
 			}
 		}
 	}
