@@ -107,16 +107,22 @@ func (o overlapChangeProcessor[D, A]) Name() string {
 	return "OverlapChangeProcessor"
 }
 
-func (o overlapChangeProcessor[D, A]) ProcessChange(s Sudoku[D, A], cell CellLocation, mask D) error {
-	targetCell := CellLocation{
-		Row: cell.Row + o.offset.Row,
-		Col: cell.Col + o.offset.Col,
+func (o overlapChangeProcessor[D, A]) ProcessChanges(s Sudoku[D, A]) error {
+	for _, cell := range s.ChangedArea().Locations {
+		mask := s.Get(cell)
+		targetCell := CellLocation{
+			Row: cell.Row + o.offset.Row,
+			Col: cell.Col + o.offset.Col,
+		}
+		if targetCell.Row < 0 || targetCell.Row >= s.Size() {
+			return nil
+		}
+		if targetCell.Col < 0 || targetCell.Col >= s.Size() {
+			return nil
+		}
+		if err := o.targetSudoku.Mask(targetCell, mask); err != nil {
+			return err
+		}
 	}
-	if targetCell.Row < 0 || targetCell.Row >= s.Size() {
-		return nil
-	}
-	if targetCell.Col < 0 || targetCell.Col >= s.Size() {
-		return nil
-	}
-	return o.targetSudoku.Mask(targetCell, mask)
+	return nil
 }

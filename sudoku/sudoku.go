@@ -49,6 +49,9 @@ type Sudoku[D Digits[D], A Area[A]] interface {
 	// NextChangedArea returns the area of the grid that will change next.
 	NextChangedArea() A
 
+	// ProcessChanges processes the changes made to the Sudoku puzzle and updates the state accordingly.
+	ProcessChanges() error
+
 	// GetExclusionArea returns the exclusion area for the specified cell location.
 	GetExclusionArea(l CellLocation) A
 
@@ -205,7 +208,6 @@ func (s *sudoku[D, A, G, S, GO]) Set(l CellLocation, v int) error {
 		oldCell := *cell
 		*cell = s.NewDigits(v)
 		s.logger.UpdateCell(l, oldCell, *cell)
-		return s.processChange(l, *cell)
 	}
 	return nil
 }
@@ -244,7 +246,6 @@ func (s *sudoku[D, A, G, S, GO]) Mask(l CellLocation, d D) error {
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
-		return s.processChange(l, newDigits)
 	}
 	return nil
 }
@@ -262,7 +263,6 @@ func (s *sudoku[D, A, G, S, GO]) RemoveMask(l CellLocation, d D) error {
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
-		return s.processChange(l, newDigits)
 	}
 	return nil
 }

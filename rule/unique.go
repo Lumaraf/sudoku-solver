@@ -148,12 +148,8 @@ func (cp UniqueIntersectionChangeProcessor[D, A]) Name() string {
 	return "Unique Intersection"
 }
 
-func (cp UniqueIntersectionChangeProcessor[D, A]) ProcessChange(s sudoku.Sudoku[D, A], cell sudoku.CellLocation, mask D) error {
-	if !cp.area.Get(cell) {
-		return nil
-	}
-
-	if cp.area.And(s.NextChangedArea()).Empty() {
+func (cp UniqueIntersectionChangeProcessor[D, A]) ProcessChanges(s sudoku.Sudoku[D, A]) error {
+	if cp.area.And(s.ChangedArea()).Empty() {
 		return nil
 	}
 

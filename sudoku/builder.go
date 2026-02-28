@@ -21,7 +21,7 @@ type Restriction[D Digits[D], A Area[A]] interface {
 
 type ChangeProcessor[D Digits[D], A Area[A]] interface {
 	Name() string
-	ProcessChange(s Sudoku[D, A], cell CellLocation, mask D) error
+	ProcessChanges(s Sudoku[D, A]) error
 }
 
 type SolveProcessor[D Digits[D], A Area[A]] interface {
@@ -35,14 +35,17 @@ func (sps SolveProcessors[D, A]) Name() string {
 	return "Solve Processors"
 }
 
-func (sps SolveProcessors[D, A]) ProcessChange(s Sudoku[D, A], cell CellLocation, mask D) error {
-	if mask.Count() != 1 {
-		return nil
-	}
-	s.setSolved(cell)
-	for _, sp := range sps {
-		if err := sp.ProcessSolve(s, cell, mask); err != nil {
-			return err
+func (sps SolveProcessors[D, A]) ProcessChanges(s Sudoku[D, A]) error {
+	for _, l := range s.ChangedArea().Locations {
+		mask := s.Get(l)
+		if mask.Count() != 1 {
+			continue
+		}
+		s.setSolved(l)
+		for _, sp := range sps {
+			if err := sp.ProcessSolve(s, l, mask); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -73,24 +76,27 @@ func (cp OffsetMaskChangeProcessor[D, A]) Name() string {
 	return "Offset Mask"
 }
 
-func (cp OffsetMaskChangeProcessor[D, A]) ProcessChange(s Sudoku[D, A], cell CellLocation, mask D) error {
-	cellMasks := make(map[Offset]D)
-	for v := range mask.Values {
-		if offsetMasks, ok := cp.offsetMasks[v]; ok {
-			for offset, offsetMask := range offsetMasks {
-				cellMasks[offset] = cellMasks[offset].Or(offsetMask)
+func (cp OffsetMaskChangeProcessor[D, A]) ProcessChanges(s Sudoku[D, A]) error {
+	for _, cell := range s.ChangedArea().Locations {
+		mask := s.Get(cell)
+		cellMasks := make(map[Offset]D)
+		for v := range mask.Values {
+			if offsetMasks, ok := cp.offsetMasks[v]; ok {
+				for offset, offsetMask := range offsetMasks {
+					cellMasks[offset] = cellMasks[offset].Or(offsetMask)
+				}
 			}
 		}
-	}
 
-	for offset, combinedMask := range cellMasks {
-		offsetCell := CellLocation{cell.Row + offset.Row, cell.Col + offset.Col}
-		if offsetCell.Row < 0 || offsetCell.Row >= s.Size() || offsetCell.Col < 0 || offsetCell.Col >= s.Size() {
-			continue
-		}
+		for offset, combinedMask := range cellMasks {
+			offsetCell := CellLocation{cell.Row + offset.Row, cell.Col + offset.Col}
+			if offsetCell.Row < 0 || offsetCell.Row >= s.Size() || offsetCell.Col < 0 || offsetCell.Col >= s.Size() {
+				continue
+			}
 
-		if err := s.Mask(offsetCell, combinedMask); err != nil {
-			return err
+			if err := s.Mask(offsetCell, combinedMask); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -223,10 +229,10 @@ func (s *sudokuBuilder[D, A, G, S, GO]) Build() (Sudoku[D, A], error) {
 			if mask == s.sudoku.AllDigits() {
 				continue
 			}
-			if err := s.sudoku.processChange(l, mask); err != nil {
-				return nil, err
-			}
 		}
+	}
+	if err := s.sudoku.ProcessChanges(); err != nil {
+		return nil, err
 	}
 	return s.sudoku, nil
 }

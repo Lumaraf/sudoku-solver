@@ -117,6 +117,10 @@ func (slv *solver[D, A, G, S, GO]) solve(s *sudoku[D, A, G, S, GO], solvers []St
 		if s.nextChanged.Empty() {
 			break
 		}
+
+		if err := s.ProcessChanges(); err != nil {
+			return solvers, err
+		}
 	}
 	return solvers, s.Validate()
 }
@@ -208,16 +212,30 @@ func (s *sudoku[D, A, G, S, GO]) NewSolver() Solver[D, A] {
 
 var processChangeContext = StringContext("processChange")
 
-func (s *sudoku[D, A, G, S, GO]) processChange(l CellLocation, mask D) error {
+func (s *sudoku[D, A, G, S, GO]) ProcessChanges() error {
 	s.logger.EnterContext(processChangeContext)
 	defer s.logger.ExitContext()
 
-	for _, cp := range s.changeProcessors {
-		s.logger.EnterContext(cp)
-		if err := cp.ProcessChange(s, l, mask); err != nil {
-			return err
+	oldChanged := s.changed
+	changed := s.nextChanged
+	allChanged := changed
+	for {
+		s.nextChanged = *new(A)
+		s.changed = changed
+		for _, cp := range s.changeProcessors {
+			s.logger.EnterContext(cp)
+			if err := cp.ProcessChanges(s); err != nil {
+				return err
+			}
+			s.logger.ExitContext()
 		}
-		s.logger.ExitContext()
+		if s.nextChanged.Empty() {
+			break
+		}
+		changed = s.nextChanged
+		allChanged = allChanged.Or(changed)
 	}
+	s.nextChanged = allChanged
+	s.changed = oldChanged
 	return nil
 }
