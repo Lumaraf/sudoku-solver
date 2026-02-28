@@ -213,6 +213,10 @@ func (s *sudoku[D, A, G, S, GO]) NewSolver() Solver[D, A] {
 var processChangeContext = StringContext("processChange")
 
 func (s *sudoku[D, A, G, S, GO]) ProcessChanges() error {
+	if s.nextChanged.Empty() {
+		return nil
+	}
+
 	s.logger.EnterContext(processChangeContext)
 	defer s.logger.ExitContext()
 

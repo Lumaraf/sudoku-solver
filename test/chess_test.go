@@ -42,20 +42,21 @@ func TestChess(t *testing.T) {
 			extraRule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
 			extraRule.NonConsecutiveRule[sudoku.Digits9, sudoku.Area9x9]{},
 		},
-		//"159": {
-		//	Rows: []string{
-		//		"         ",
-		//		"         ",
-		//		"    E    ",
-		//		"E   E    ",
-		//		"E   E    ",
-		//		"E   E    ",
-		//		"E        ",
-		//		"         ",
-		//		"         ",
-		//	},
-		//	AntiKnight: true,
-		//	Rule159:    true,
-		//},
+		"159": {
+			rule.ClassicRules[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.ParityFromString[sudoku.Digits9, sudoku.Area9x9](
+				"         ",
+				"         ",
+				"    E    ",
+				"E   E    ",
+				"E   E    ",
+				"E   E    ",
+				"E        ",
+				"         ",
+				"         ",
+			),
+			extraRule.Rule159[sudoku.Digits9, sudoku.Area9x9]{},
+			extraRule.AntiKnightRule[sudoku.Digits9, sudoku.Area9x9]{},
+		},
 	}.Run(t, sudoku.NewSudokuBuilder9x9)
 }

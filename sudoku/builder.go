@@ -41,7 +41,7 @@ func (sps SolveProcessors[D, A]) ProcessChanges(s Sudoku[D, A]) error {
 		if mask.Count() != 1 {
 			continue
 		}
-		s.setSolved(l)
+		//s.setSolved(l)
 		for _, sp := range sps {
 			if err := sp.ProcessSolve(s, l, mask); err != nil {
 				return err

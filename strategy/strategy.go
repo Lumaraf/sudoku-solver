@@ -23,12 +23,12 @@ func AllStrategies[D sudoku.Digits[D], A sudoku.Area[A]]() sudoku.StrategyFactor
 		// XWingStrategy:
 		// Searches for the X-Wing pattern: a candidate appears exactly twice in two different rows and the same columns (or vice versa).
 		// This allows elimination of the candidate from other cells in those columns/rows.
-		sudoku.StrategyFactoryFunc[D, A](XWingStrategyFactory[D, A]),
+		//sudoku.StrategyFactoryFunc[D, A](XWingStrategyFactory[D, A]),
 
 		// UniqueExclusionStrategy:
 		// Examines all possible placements of a candidate in a unit and excludes candidates that cannot appear in any valid solution.
 		// This is related to "hidden singles" and advanced exclusion logic.
-		sudoku.StrategyFactoryFunc[D, A](UniqueExclusionStrategyFactory[D, A]),
+		//sudoku.StrategyFactoryFunc[D, A](UniqueExclusionStrategyFactory[D, A]),
 
 		// PatternOverlayStrategy:
 		// Finds all possible placement patterns for every digit and overlays them to eliminate impossible options.

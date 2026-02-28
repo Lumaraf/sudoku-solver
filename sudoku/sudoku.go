@@ -204,6 +204,7 @@ func (s *sudoku[D, A, G, S, GO]) Set(l CellLocation, v int) error {
 	}
 	if (*cell).Count() > 1 {
 		s.nextChanged = s.nextChanged.With(l)
+		s.setSolved(l)
 		s.stats.CellUpdates++
 		oldCell := *cell
 		*cell = s.NewDigits(v)
@@ -244,6 +245,9 @@ func (s *sudoku[D, A, G, S, GO]) Mask(l CellLocation, d D) error {
 		if newDigits.Empty() {
 			return ErrEmptyCell(l)
 		}
+		if newDigits.Count() == 1 {
+			s.setSolved(l)
+		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)
 	}
@@ -260,6 +264,9 @@ func (s *sudoku[D, A, G, S, GO]) RemoveMask(l CellLocation, d D) error {
 		if newDigits.Empty() {
 			s.solved = s.solved.Without(l)
 			return ErrEmptyCell(l)
+		}
+		if newDigits.Count() == 1 {
+			s.setSolved(l)
 		}
 		*target = newDigits
 		s.logger.UpdateCell(l, oldDigits, newDigits)

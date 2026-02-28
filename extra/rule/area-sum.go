@@ -42,14 +42,6 @@ type KillerCageRule[D sudoku.Digits[D], A sudoku.Area[A]] struct {
 
 func (r KillerCageRule[D, A]) Apply(sb sudoku.SudokuBuilder[D, A]) error {
 	area := sb.NewArea(r.Area...)
-	//sb.AddRestriction(AreaSumRestriction[D, A]{
-	//	area: area,
-	//	sum:  r.Sum,
-	//})
-	//sb.AddValidator(AreaSumValidator[D, A]{
-	//	area: area,
-	//	sum:  r.Sum,
-	//})
 	return sb.Use(
 		rule.NewUniqueAreaRule[D, A]("killer cage", area),
 		AreaSumRule[D, A]{

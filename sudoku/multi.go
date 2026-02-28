@@ -78,11 +78,20 @@ func (b *MultiSudokuBuilder[D, A]) Build() (MultiSudoku[D, A], error) {
 
 func (ms *MultiSudoku[D, A]) Solve(ctx context.Context, factories StrategyFactories[D, A]) error {
 	// TODO repeat until there is no more progress
+	solvers := make([]Solver[D, A], 0, len(ms.sudokus))
 	for _, s := range ms.sudokus {
 		slv := s.NewSolver()
 		slv.Use(factories...)
-		slv.Solve(ctx)
+		solvers = append(solvers, slv)
 	}
+	//for {
+	//changed := false
+	for _, slv := range solvers {
+		if err := slv.Solve(ctx); err != nil {
+			return err
+		}
+	}
+	//}
 	for _, s := range ms.sudokus {
 		s.Print()
 	}
@@ -115,10 +124,10 @@ func (o overlapChangeProcessor[D, A]) ProcessChanges(s Sudoku[D, A]) error {
 			Col: cell.Col + o.offset.Col,
 		}
 		if targetCell.Row < 0 || targetCell.Row >= s.Size() {
-			return nil
+			continue
 		}
 		if targetCell.Col < 0 || targetCell.Col >= s.Size() {
-			return nil
+			continue
 		}
 		if err := o.targetSudoku.Mask(targetCell, mask); err != nil {
 			return err

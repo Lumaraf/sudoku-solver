@@ -33,14 +33,17 @@ func (slv LogicChainStrategy[D, A]) Solve(s sudoku.Sudoku[D, A], push func(sudok
 		results := make([]sudoku.Sudoku[D, A], 0, d.Count())
 		for v := range d.Values {
 			err := s.Try(func(s sudoku.Sudoku[D, A]) error {
-				err := s.Set(cell, v)
-				if err == nil {
-					err = s.Validate()
+				if err := s.Set(cell, v); err != nil {
+					return err
 				}
-				if err == nil {
-					results = append(results, s)
+				if err := s.ProcessChanges(); err != nil {
+					return err
 				}
-				return err
+				if err := s.Validate(); err != nil {
+					return err
+				}
+				results = append(results, s)
+				return nil
 			})
 			if err != nil {
 				err = s.RemoveOption(cell, v)

@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -40,10 +41,9 @@ func (tests SudokuTests[D, A]) Run(t *testing.T, builderFunc func() sudoku.Sudok
 			slv.Use(strategy.AllStrategies[D, A](), extraStrategy.AllExtraStrategies[D, A]())
 			slv.SetChainLimit(0)
 			assert.NoError(t, slv.Solve(ctx))
-			if !assert.True(t, s.IsSolved()) {
-				s.Print()
-			}
-			//fmt.Printf("Stats: %+v\n", s.Stats())
+			assert.True(t, s.IsSolved())
+			s.Print()
+			fmt.Printf("Stats: %+v\n", s.Stats())
 		})
 	}
 }
